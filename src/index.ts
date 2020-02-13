@@ -1,15 +1,22 @@
-import { config } from "dotenv";
-import express, { Request, Response } from "express";
-import bodyParser from "body-parser";
+import "./utils/secrets";
+import { logger } from "./utils/logger";
+import { telegramBot } from "./telegramBot";
+import { app } from "./app";
 
-config();
+async function start(): Promise<void> {
+  app.listen(app.get("port"), async () => {
+    console.log(
+      `App is running at http://localhost:${app.get("port")} in ${app.get(
+        "env"
+      )}`
+    );
+    try {
+      await telegramBot.setupWebhook();
+      logger.info("Setup telegram bot webhook");
+    } catch (err) {
+      logger.error(err);
+    }
+  });
+}
 
-const app = express();
-
-const PORT = process.env.PORT || 3030;
-
-app.use(bodyParser.urlencoded({ extended: true }));
-
-app.listen(PORT, () => {
-  console.log(`Listening on port ${PORT}`);
-});
+start();
