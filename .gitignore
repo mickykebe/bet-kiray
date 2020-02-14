@@ -3,3 +3,4 @@ build
 .env
 scratchpad.js
 debug.log
+yarn-error.log

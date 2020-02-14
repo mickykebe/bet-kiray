@@ -1,6 +1,6 @@
-import "./utils/secrets";
+import { TELEGRAM_BOT_TOKEN, APP_ROOT_URL } from "./utils/secrets";
 import { logger } from "./utils/logger";
-import { telegramBot } from "./telegramBot";
+import { TelegramBot } from "./bot/TelegramBot";
 import { app } from "./app";
 
 async function start(): Promise<void> {
@@ -10,11 +10,13 @@ async function start(): Promise<void> {
         "env"
       )}`
     );
+
+    const telegramBot = new TelegramBot(TELEGRAM_BOT_TOKEN, APP_ROOT_URL, app);
     try {
-      await telegramBot.setupWebhook();
-      logger.info("Setup telegram bot webhook");
+      await telegramBot.setup("/api/telegram");
     } catch (err) {
       logger.error(err);
+      process.exit(1);
     }
   });
 }

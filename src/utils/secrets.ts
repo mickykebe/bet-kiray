@@ -8,6 +8,7 @@ if (fs.existsSync(".env")) {
 }
 
 export const ENVIRONMENT = process.env.NODE_ENV;
+const prod = ENVIRONMENT === "production";
 
 export const PORT = process.env.PORT || 3030;
 
@@ -33,5 +34,13 @@ if (!TELEGRAM_BOT_TOKEN) {
   logger.error(
     "No Telegram Bot token set. Set TELEGRAM_BOT_TOKEN environment variable"
   );
+  process.exit(1);
+}
+
+export const REDIS_URL =
+  ENVIRONMENT === "production" ? process.env.REDIS_URL : undefined;
+
+if (!REDIS_URL && prod) {
+  logger.error("No Redis url provided. Set REDIS_URL environment variable");
   process.exit(1);
 }

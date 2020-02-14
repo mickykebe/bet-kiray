@@ -1,19 +1,44 @@
 import Knex from "knex";
+import { DATABASE_URL } from "./utils/secrets";
+import { User as TelegramUser } from "./types/telegram";
 
-class Db {
-  private knex: Knex;
-  private constructor() {
-    this.knex = Knex({
-      client: "pg",
-      connection: process.env.DATABASE_URL
+const knex = Knex({
+  client: "pg",
+  connection: DATABASE_URL
+});
+
+interface User {
+  id: number;
+  telegram_id: number;
+  telegram_user_name?: string;
+  first_name?: string;
+  last_name?: string;
+  role: string;
+}
+
+export async function findOrCreateTelegramUser(
+  telegramUser: TelegramUser,
+  role: string
+): Promise<User> {
+  const user = await knex<User>("users")
+    .first()
+    .where({
+      telegram_id: telegramUser.id
     });
+  if (user) {
+    return user;
   }
-  private static _db: Db;
-
-  static getInstance() {
-    if (!this._db) {
-      this._db = new Db();
-    }
-    return this._db;
+  const users = await knex<User>("users")
+    .insert({
+      telegram_id: telegramUser.id,
+      telegram_user_name: telegramUser.username,
+      first_name: telegramUser.first_name,
+      last_name: telegramUser.last_name,
+      role
+    })
+    .returning("*");
+  if (users.length !== 1) {
+    throw new Error("Problem occurre creating telegram user");
   }
+  return users[0];
 }

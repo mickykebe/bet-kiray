@@ -1,7 +1,9 @@
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
-  telegram_id INTEGER UNIQUE,
+  telegram_id INTEGER UNIQUE NOT NULL,
   telegram_user_name TEXT UNIQUE,
+  first_name TEXT,
+  last_name TEXT,
   role TEXT NOT NULL CONSTRAINT role_values CHECK (role IN ('user', 'admin'))
 );
 
