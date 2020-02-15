@@ -1,31 +1,31 @@
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 import { EventEmitter } from "events";
 import { Express, Request, Response } from "express";
 import { logger } from "../utils/logger";
 import {
   Update as TelegramUpdate,
-  Message as TelegramMessage
+  Message as TelegramMessage,
+  InlineKeyboardMarkup,
+  ReplyKeyboardMarkup
 } from "../types/telegram";
-import * as telegramBotMachine from "./TelegramBotMachine";
-import * as db from "../db";
-import { interpret } from "xstate";
 
 const TELEGRAM_API_BASE_URL = `https://api.telegram.org/bot`;
 
 export class TelegramBot extends EventEmitter {
+  telegramBaseUrl: string;
   constructor(
     private botToken: string,
     private appRootUrl: string,
     private app: Express
   ) {
     super();
-    this.on("message", this.onReceiveMessage);
+    this.telegramBaseUrl = TELEGRAM_API_BASE_URL + this.botToken;
   }
 
   async setup(path: string): Promise<void> {
     const pathEndpoint = `${path}/${this.botToken}`;
     this.app.post(pathEndpoint, this.updateHandler);
-    await axios.post(`${TELEGRAM_API_BASE_URL}${this.botToken}/setWebhook`, {
+    await axios.post(`${this.telegramBaseUrl}/setWebhook`, {
       url: `${this.appRootUrl}${pathEndpoint}`
     });
     logger.info("Setup telegram bot webhook");
@@ -39,33 +39,22 @@ export class TelegramBot extends EventEmitter {
     res.sendStatus(200);
   };
 
-  private async onReceiveMessage(message: TelegramMessage) {
-    const telegramUser = message.from;
-    if (!telegramUser) {
-      return;
-    }
-    let botMachine = telegramBotMachine.machine;
-    let previousState = await telegramBotMachine.getPersistedMachineState(
-      telegramUser.id
-    );
-    let currentState;
-    if (previousState) {
-      currentState = botMachine.resolveState(previousState);
-    } else {
-      const user = await db.findOrCreateTelegramUser(telegramUser, "user");
-      botMachine = telegramBotMachine.machine.withContext({
-        ...telegramBotMachine.machine.context,
-        userId: user.id,
-        telegramUserId: telegramUser.id
-      });
-      currentState = botMachine.initialState;
-    }
-    const service = interpret(botMachine);
-    service.onTransition(state => {
-      if (state.changed) {
-        telegramBotMachine.persistMachineState(telegramUser.id, state);
-      }
+  sendMessage(
+    chatId: number | string,
+    text: string,
+    {
+      replyMarkup,
+      parseMode
+    }: {
+      replyMarkup?: InlineKeyboardMarkup | ReplyKeyboardMarkup;
+      parseMode?: string;
+    } = {}
+  ): Promise<AxiosResponse> {
+    return axios.post(`${this.telegramBaseUrl}/sendMessage`, {
+      chat_id: chatId,
+      text,
+      reply_markup: replyMarkup,
+      parse_mode: parseMode
     });
-    service.start(currentState);
   }
 }

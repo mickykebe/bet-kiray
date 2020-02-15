@@ -29,6 +29,27 @@ export interface Message {
   date: number;
   chat: any;
   forward_form?: User;
+  forward_from_chat?: any;
+  forward_from_message_id?: number;
+  forward_signature?: string;
+  forward_sender_name?: string;
+  forward_date?: number;
+  reply_to_message?: Message;
+  edit_date?: number;
+  media_group_id?: string;
+  author_signature?: string;
+  text?: string;
+  entities?: any[];
+  caption_entities?: any[];
+  audio?: any;
+  document?: any;
+  animation?: any;
+  game?: any;
+  photo?: any[];
+  sticker?: any;
+  video?: any;
+  voice?: any;
+  video_note?: any;
 }
 
 export interface User {
@@ -41,4 +62,44 @@ export interface User {
   can_join_groups?: boolean;
   can_read_all_group_messages?: boolean;
   supports_inline_queries?: boolean;
+}
+
+export interface ReplyKeyboardMarkup {
+  keyboard: KeyboardButton[][];
+  resize_keyboard?: boolean;
+  one_time_keyboard?: boolean;
+  selective?: boolean;
+}
+
+export interface KeyboardButton {
+  text: string;
+  request_contact?: boolean;
+  request_location?: boolean;
+  request_poll?: KeyboardButtonPollType;
+}
+
+export interface KeyboardButtonPollType {
+  type?: string;
+}
+
+export interface InlineKeyboardMarkup {
+  inline_keyboard: InlineKeyboardButton[][];
+}
+
+export interface InlineKeyboardButton {
+  text: string;
+  url?: string;
+  login_url?: LoginUrl;
+  callback_data?: string;
+  switch_inline_query?: string;
+  switch_inline_query_current_chat?: string;
+  callback_game?: any;
+  pay?: boolean;
+}
+
+export interface LoginUrl {
+  url: string;
+  forward_text?: string;
+  bot_username?: string;
+  request_write_access: boolean;
 }
