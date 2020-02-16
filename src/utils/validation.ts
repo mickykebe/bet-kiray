@@ -19,3 +19,5 @@ export const houseTypeValidator = Yup.string()
 
 export const roomsValidator = Yup.number().min(1);
 export const bathroomsValidator = Yup.number().min(1);
+
+export const titleValidator = Yup.string().required("Required");

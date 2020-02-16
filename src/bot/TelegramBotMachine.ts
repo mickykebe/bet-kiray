@@ -103,6 +103,11 @@ interface StateSchema {
         promptBathrooms: {};
         waitingBathrooms: {};
         promptTitle: {};
+        waitingTitle: {};
+        promptDescription: {};
+        waitingDescription: {};
+        promptPrice: {};
+        waitingPrice: {};
       };
     };
   };
@@ -122,6 +127,8 @@ interface ListingValues {
   houseType?: string;
   rooms?: number;
   bathrooms?: number;
+  title?: string;
+  description?: string;
 }
 
 interface Context {
@@ -273,7 +280,57 @@ export class TelegramBotMachine {
                   ]
                 }
               },
-              promptTitle: {}
+              promptTitle: {
+                invoke: {
+                  id: "promptTitle",
+                  src: "promptTitle",
+                  onDone: "waitingTitle"
+                }
+              },
+              waitingTitle: {
+                entry: ["resetTitle"],
+                on: {
+                  RECEIVED_MESSAGE: [
+                    {
+                      cond: "isEventBack",
+                      target: "promptBathrooms"
+                    },
+                    {
+                      target: "promptDescription",
+                      actions: ["saveTitle"],
+                      cond: { type: "titleValid" }
+                    }
+                  ]
+                }
+              },
+              promptDescription: {
+                invoke: {
+                  id: "promptDescription",
+                  src: "promptDescription",
+                  onDone: "waitingDescription"
+                }
+              },
+              waitingDescription: {
+                entry: ["resetDescription"],
+                on: {
+                  RECEIVED_MESSAGE: [
+                    {
+                      cond: "isEventBack",
+                      target: "promptTitle"
+                    },
+                    {
+                      cond: "isEventSkip",
+                      target: "promptPrice"
+                    },
+                    {
+                      actions: ["saveDescription"],
+                      target: "promptPrice"
+                    }
+                  ]
+                }
+              },
+              promptPrice: {},
+              waitingPrice: {}
             }
           }
         }
@@ -294,7 +351,8 @@ export class TelegramBotMachine {
             }
           ),
           roomsValid: yupEventValidator(validators.roomsValidator),
-          bathroomsValid: yupEventValidator(validators.bathroomsValidator)
+          bathroomsValid: yupEventValidator(validators.bathroomsValidator),
+          titleValid: yupEventValidator(validators.titleValidator)
         },
         actions: {
           resetAvailability: resetListingValue("availability"),
@@ -310,16 +368,26 @@ export class TelegramBotMachine {
               HOUSE_TYPE_MAP[houseType as MESSAGES_HOUSE_TYPE]
           ),
           resetRooms: resetListingValue("rooms"),
-          saveRooms: saveListingValue("rooms"),
+          saveRooms: saveListingValue<number>("rooms", rooms =>
+            parseInt(rooms)
+          ),
           resetBathrooms: resetListingValue("bathrooms"),
-          saveBathrooms: resetListingValue("bathrooms")
+          saveBathrooms: saveListingValue<number>("bathrooms", bathrooms =>
+            parseInt(bathrooms)
+          ),
+          resetTitle: resetListingValue("title"),
+          saveTitle: saveListingValue("title"),
+          resetDescription: resetListingValue("description"),
+          saveDescription: saveListingValue("description")
         },
         services: {
           promptMainMenu: this.promptMainMenu,
           promptHouseAvailability: this.promptHouseAvailability,
           promptHouseType: this.promptHouseType,
           promptRooms: this.promptRooms,
-          promptBathrooms: this.promptBathrooms
+          promptBathrooms: this.promptBathrooms,
+          promptTitle: this.promptTitle,
+          promptDescription: this.promptDescription
         }
       }
     );
@@ -442,6 +510,42 @@ export class TelegramBotMachine {
       context.telegramUserId,
       "How many bathrooms? (Enter numbers only)",
       {
+        replyMarkup: {
+          keyboard: [
+            [{ text: MESSAGE_BACK }, { text: MESSAGE_SKIP }],
+            [{ text: MESSAGE_BACK_TO_MAIN_MENU }]
+          ],
+          resize_keyboard: true
+        }
+      }
+    );
+  };
+
+  private promptTitle = async (context: Context) => {
+    await this.telegramBot.sendMessage(
+      context.telegramUserId,
+      `Enter a short title for the listing.
+      
+*(E.g. "Studio condominium for rent @ Bole")*`,
+      {
+        parseMode: "Markdown",
+        replyMarkup: {
+          keyboard: [
+            [{ text: MESSAGE_BACK }],
+            [{ text: MESSAGE_BACK_TO_MAIN_MENU }]
+          ],
+          resize_keyboard: true
+        }
+      }
+    );
+  };
+
+  private promptDescription = async (context: Context) => {
+    await this.telegramBot.sendMessage(
+      context.telegramUserId,
+      `Enter a full description of the listing. (Include as many details as possible).`,
+      {
+        parseMode: "Markdown",
         replyMarkup: {
           keyboard: [
             [{ text: MESSAGE_BACK }, { text: MESSAGE_SKIP }],
