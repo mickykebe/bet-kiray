@@ -8,14 +8,14 @@ import { HouseType, HouseAvailableFor } from "../utils/values";
 import * as validators from "../utils/validation";
 
 const MESSAGE_START = "/start";
-const MESSAGE_BACK_TO_MAIN_MENU = "🔚 Main Menu";
-const MESSAGE_BACK = "⬅️ Back";
-const MESSAGE_SKIP = "➡️ Skip";
-const MESSAGE_POST_HOUSE = "🏠 Post a house";
+const MESSAGE_BACK_TO_MAIN_MENU = "🔚 ወደ ዋናው ማውጫ";
+const MESSAGE_BACK = "⬅️ አንድ ወደ ኋላ";
+const MESSAGE_SKIP = "➡️ ዝለል";
+const MESSAGE_POST_HOUSE = "🏠 የቤት ማስታወቅያ ፍጠር";
 
 enum MESSAGES_AVAILABLE_FOR {
-  Sale = "💰 Sale",
-  Rent = "👛 Rent"
+  Sale = "💰 ሽያጭ",
+  Rent = "👛 ኪራይ"
 }
 
 const AVAILABLE_FOR_MAP = {
@@ -24,12 +24,12 @@ const AVAILABLE_FOR_MAP = {
 };
 
 enum MESSAGES_HOUSE_TYPE {
-  Apartment = "🏨 Apartment",
-  Condominium = "🏢 Condominium",
-  House = "🏠 House",
-  CommercialProperty = "🏪 Commercial Property",
-  HouseRooms = "🚪 House Room(s)",
-  GuestHouse = "🏘️ Guest House"
+  Apartment = "🏨 አፓርታማ",
+  Condominium = "🏢 ኮንዶሚንየም",
+  House = "🏠 ቤት",
+  CommercialProperty = "🏪 የንግድ ቤት",
+  HouseRooms = "🚪 የቤት ክፍሎች",
+  GuestHouse = "🏘️ ጌስት ሃውስ"
 }
 
 const HOUSE_TYPE_MAP = {
@@ -432,7 +432,7 @@ export class TelegramBotMachine {
   private promptMainMenu = async (context: Context) => {
     await this.telegramBot.sendMessage(
       context.telegramUserId,
-      "Choose an option",
+      "ከምርጫዎቹ አንዱን ምረጥ",
       {
         replyMarkup: {
           keyboard: [[{ text: MESSAGE_POST_HOUSE }]],
@@ -445,7 +445,7 @@ export class TelegramBotMachine {
   private promptHouseAvailability = async (context: Context) => {
     await this.telegramBot.sendMessage(
       context.telegramUserId,
-      "Is the house available for sale or rent?",
+      "ማስታወቅያው ለቤት ኪራይ ነው ወይስ ለሽያጭ",
       {
         replyMarkup: {
           keyboard: [
@@ -464,7 +464,7 @@ export class TelegramBotMachine {
   private promptHouseType = async (context: Context) => {
     await this.telegramBot.sendMessage(
       context.telegramUserId,
-      "Choose the type of house.",
+      "የቤቱን አይነት ምረጥ",
       {
         replyMarkup: {
           keyboard: [
@@ -492,7 +492,7 @@ export class TelegramBotMachine {
   private promptRooms = async (context: Context) => {
     await this.telegramBot.sendMessage(
       context.telegramUserId,
-      "How many rooms? (Enter numbers only)",
+      "ስንት ክፍል አለው? (ቁጥር ብቻ አስገባ)",
       {
         replyMarkup: {
           keyboard: [
@@ -508,7 +508,7 @@ export class TelegramBotMachine {
   private promptBathrooms = async (context: Context) => {
     await this.telegramBot.sendMessage(
       context.telegramUserId,
-      "How many bathrooms? (Enter numbers only)",
+      "ስንት ባኞ ቤት አለው? (ቁጥር ብቻ አስገባ)",
       {
         replyMarkup: {
           keyboard: [
@@ -524,9 +524,9 @@ export class TelegramBotMachine {
   private promptTitle = async (context: Context) => {
     await this.telegramBot.sendMessage(
       context.telegramUserId,
-      `Enter a short title for the listing.
+      `ቤቱን በአንድ አረፍተነገር ግለጽ
       
-*(E.g. "Studio condominium for rent @ Bole")*`,
+*(ምሳሌ፦ "ጀሞ ሰፈር የሚከራይ ባለ አንድ መኝታ ቤት ኮንዶሚንየም)*`,
       {
         parseMode: "Markdown",
         replyMarkup: {
@@ -543,9 +543,8 @@ export class TelegramBotMachine {
   private promptDescription = async (context: Context) => {
     await this.telegramBot.sendMessage(
       context.telegramUserId,
-      `Enter a full description of the listing. (Include as many details as possible).`,
+      `ስለ ቤቱ ሙሉ መግለጫ ስጥ፡፡ ስለ ቤቱ ገጽታ ዝርዝር ማብራርያ ስጥ`,
       {
-        parseMode: "Markdown",
         replyMarkup: {
           keyboard: [
             [{ text: MESSAGE_BACK }, { text: MESSAGE_SKIP }],
