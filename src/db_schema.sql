@@ -9,6 +9,7 @@ CREATE TABLE users (
 
 CREATE TABLE house_listing (
   id SERIAL PRIMARY KEY,
+  available_for TEXT NOT NULL CONSTRAINT available_for_values CHECK (available_for IN ('Sale', 'Rent')),
   house_type TEXT NOT NULL CONSTRAINT house_type_values CHECK (house_type IN ('Apartment', 'Condominium', 'House', 'Commercial Property', 'House Rooms', 'Guest House')),
   title TEXT NOT NULL,
   description TEXT,
