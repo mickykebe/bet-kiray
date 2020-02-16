@@ -108,6 +108,7 @@ interface StateSchema {
         waitingDescription: {};
         promptPrice: {};
         waitingPrice: {};
+        promptPhotos: {};
       };
     };
   };
@@ -129,6 +130,7 @@ interface ListingValues {
   bathrooms?: number;
   title?: string;
   description?: string;
+  price?: string;
 }
 
 interface Context {
@@ -329,8 +331,33 @@ export class TelegramBotMachine {
                   ]
                 }
               },
-              promptPrice: {},
-              waitingPrice: {}
+              promptPrice: {
+                invoke: {
+                  id: "promptPrice",
+                  src: "promptPrice",
+                  onDone: "waitingPrice"
+                }
+              },
+              waitingPrice: {
+                entry: ["resetPrice"],
+                on: {
+                  RECEIVED_MESSAGE: [
+                    {
+                      cond: "isEventBack",
+                      target: "promptDescription"
+                    },
+                    {
+                      cond: "isEventSkip",
+                      target: "promptPhotos"
+                    },
+                    {
+                      actions: ["savePrice"],
+                      target: "promptPhotos"
+                    }
+                  ]
+                }
+              },
+              promptPhotos: {}
             }
           }
         }
@@ -378,7 +405,9 @@ export class TelegramBotMachine {
           resetTitle: resetListingValue("title"),
           saveTitle: saveListingValue("title"),
           resetDescription: resetListingValue("description"),
-          saveDescription: saveListingValue("description")
+          saveDescription: saveListingValue("description"),
+          resetPrice: resetListingValue("price"),
+          savePrice: saveListingValue("price")
         },
         services: {
           promptMainMenu: this.promptMainMenu,
@@ -387,7 +416,8 @@ export class TelegramBotMachine {
           promptRooms: this.promptRooms,
           promptBathrooms: this.promptBathrooms,
           promptTitle: this.promptTitle,
-          promptDescription: this.promptDescription
+          promptDescription: this.promptDescription,
+          promptPrice: this.promptPrice
         }
       }
     );
@@ -554,6 +584,18 @@ export class TelegramBotMachine {
         }
       }
     );
+  };
+
+  private promptPrice = async (context: Context) => {
+    await this.telegramBot.sendMessage(context.telegramUserId, `ዋጋ ስንት ነው?`, {
+      replyMarkup: {
+        keyboard: [
+          [{ text: MESSAGE_BACK }, { text: MESSAGE_SKIP }],
+          [{ text: MESSAGE_BACK_TO_MAIN_MENU }]
+        ],
+        resize_keyboard: true
+      }
+    });
   };
 
   private getPersistedMachineState = async (
