@@ -5,13 +5,12 @@ import { Message as TelegramMessage } from "../types/telegram";
 import * as db from "../db";
 import { redis } from "../redis";
 import { HouseType, HouseAvailableFor } from "../utils/values";
-import {
-  houseAvailabilityValidator,
-  houseTypeValidator
-} from "../utils/validation";
+import * as validators from "../utils/validation";
 
 const MESSAGE_START = "/start";
 const MESSAGE_BACK_TO_MAIN_MENU = "🔚 Main Menu";
+const MESSAGE_BACK = "⬅️ Back";
+const MESSAGE_SKIP = "➡️ Skip";
 const MESSAGE_POST_HOUSE = "🏠 Post a house";
 
 enum MESSAGES_AVAILABLE_FOR {
@@ -59,13 +58,21 @@ const resetListingValue = (field: keyof ListingValues) =>
     })
   });
 
-const saveListingValue = (field: keyof ListingValues) =>
+const saveListingValue = <T>(
+  field: keyof ListingValues,
+  transformer?: (text: string) => T
+) =>
   assign<Context, Events>({
     listingValues: (context, event): ListingValues => {
       const messageEvent = event as EVENT_RECEIVED_MESSAGE;
+      const text = messageEvent.message.text;
+      if (!text) {
+        return context.listingValues;
+      }
+      const value = !!transformer ? transformer(text) : text;
       return {
         ...context.listingValues,
-        [field]: messageEvent.message.text
+        [field]: value
       };
     }
   });
@@ -92,6 +99,10 @@ interface StateSchema {
         promptHouseType: {};
         waitingHouseType: {};
         promptRooms: {};
+        waitingRooms: {};
+        promptBathrooms: {};
+        waitingBathrooms: {};
+        promptTitle: {};
       };
     };
   };
@@ -109,6 +120,8 @@ type Events = EVENT_START | EVENT_BACK_TO_MAIN_MENU | EVENT_RECEIVED_MESSAGE;
 interface ListingValues {
   availability?: string;
   houseType?: string;
+  rooms?: number;
+  bathrooms?: number;
 }
 
 interface Context {
@@ -189,40 +202,124 @@ export class TelegramBotMachine {
               waitingHouseType: {
                 entry: ["resetHouseType"],
                 on: {
-                  RECEIVED_MESSAGE: {
-                    target: "promptRooms",
-                    actions: ["saveHouseType"],
-                    cond: { type: "houseTypeValid" }
+                  RECEIVED_MESSAGE: [
+                    {
+                      cond: "isEventBack",
+                      target: "promptHouseAvailability"
+                    },
+                    {
+                      target: "promptRooms",
+                      actions: ["saveHouseType"],
+                      cond: { type: "houseTypeValid" }
+                    }
+                  ]
+                }
+              },
+              promptRooms: {
+                invoke: {
+                  id: "promptRooms",
+                  src: "promptRooms",
+                  onDone: {
+                    target: "waitingRooms"
                   }
                 }
               },
-              promptRooms: {}
+              waitingRooms: {
+                entry: ["resetRooms"],
+                on: {
+                  RECEIVED_MESSAGE: [
+                    {
+                      cond: "isEventSkip",
+                      target: "promptBathrooms"
+                    },
+                    {
+                      cond: "isEventBack",
+                      target: "promptHouseType"
+                    },
+                    {
+                      target: "promptBathrooms",
+                      actions: ["saveRooms"],
+                      cond: { type: "roomsValid" }
+                    }
+                  ]
+                }
+              },
+              promptBathrooms: {
+                invoke: {
+                  id: "promptBathrooms",
+                  src: "promptBathrooms",
+                  onDone: {
+                    target: "waitingBathrooms"
+                  }
+                }
+              },
+              waitingBathrooms: {
+                entry: ["resetBathrooms"],
+                on: {
+                  RECEIVED_MESSAGE: [
+                    {
+                      cond: "isEventSkip",
+                      target: "promptTitle"
+                    },
+                    {
+                      cond: "isEventBack",
+                      target: "promptRooms"
+                    },
+                    {
+                      target: "promptTitle",
+                      actions: ["saveBathrooms"],
+                      cond: { type: "bathroomsValid" }
+                    }
+                  ]
+                }
+              },
+              promptTitle: {}
             }
           }
         }
       },
       {
         guards: {
+          isEventBack: resolveMessageEvent(MESSAGE_BACK),
+          isEventSkip: resolveMessageEvent(MESSAGE_SKIP),
           isEventPostJob: resolveMessageEvent(MESSAGE_POST_HOUSE),
           availabilityValid: yupEventValidator(
-            houseAvailabilityValidator,
+            validators.houseAvailabilityValidator,
             (text: string) => AVAILABLE_FOR_MAP[text as MESSAGES_AVAILABLE_FOR]
           ),
           houseTypeValid: yupEventValidator(
-            houseTypeValidator,
-            (text: string) => HOUSE_TYPE_MAP[text as MESSAGES_HOUSE_TYPE]
-          )
+            validators.houseTypeValidator,
+            (text: string) => {
+              return HOUSE_TYPE_MAP[text as MESSAGES_HOUSE_TYPE];
+            }
+          ),
+          roomsValid: yupEventValidator(validators.roomsValidator),
+          bathroomsValid: yupEventValidator(validators.bathroomsValidator)
         },
         actions: {
           resetAvailability: resetListingValue("availability"),
-          saveAvailability: saveListingValue("availability"),
+          saveAvailability: saveListingValue<string>(
+            "availability",
+            (messageAvailability: string) =>
+              AVAILABLE_FOR_MAP[messageAvailability as MESSAGES_AVAILABLE_FOR]
+          ),
           resetHouseType: resetListingValue("houseType"),
-          saveHouseType: saveListingValue("houseType")
+          saveHouseType: saveListingValue<string>(
+            "houseType",
+            (houseType: string) =>
+              HOUSE_TYPE_MAP[houseType as MESSAGES_HOUSE_TYPE]
+          ),
+          resetRooms: resetListingValue("rooms"),
+          saveRooms: saveListingValue("rooms"),
+          resetBathrooms: resetListingValue("bathrooms"),
+          saveBathrooms: resetListingValue("bathrooms")
         },
         services: {
           promptMainMenu: this.promptMainMenu,
           promptHouseAvailability: this.promptHouseAvailability,
-          promptHouseType: this.promptHouseType
+          promptHouseType: this.promptHouseType,
+          promptRooms: this.promptRooms,
+          promptBathrooms: this.promptBathrooms
         }
       }
     );
@@ -287,7 +384,8 @@ export class TelegramBotMachine {
             [
               { text: MESSAGES_AVAILABLE_FOR.Sale },
               { text: MESSAGES_AVAILABLE_FOR.Rent }
-            ]
+            ],
+            [{ text: MESSAGE_BACK_TO_MAIN_MENU }]
           ],
           resize_keyboard: true
         }
@@ -313,7 +411,41 @@ export class TelegramBotMachine {
             [
               { text: MESSAGES_HOUSE_TYPE.GuestHouse },
               { text: MESSAGES_HOUSE_TYPE.CommercialProperty }
-            ]
+            ],
+            [{ text: MESSAGE_BACK }],
+            [{ text: MESSAGE_BACK_TO_MAIN_MENU }]
+          ],
+          resize_keyboard: true
+        }
+      }
+    );
+  };
+
+  private promptRooms = async (context: Context) => {
+    await this.telegramBot.sendMessage(
+      context.telegramUserId,
+      "How many rooms? (Enter numbers only)",
+      {
+        replyMarkup: {
+          keyboard: [
+            [{ text: MESSAGE_BACK }, { text: MESSAGE_SKIP }],
+            [{ text: MESSAGE_BACK_TO_MAIN_MENU }]
+          ],
+          resize_keyboard: true
+        }
+      }
+    );
+  };
+
+  private promptBathrooms = async (context: Context) => {
+    await this.telegramBot.sendMessage(
+      context.telegramUserId,
+      "How many bathrooms? (Enter numbers only)",
+      {
+        replyMarkup: {
+          keyboard: [
+            [{ text: MESSAGE_BACK }, { text: MESSAGE_SKIP }],
+            [{ text: MESSAGE_BACK_TO_MAIN_MENU }]
           ],
           resize_keyboard: true
         }
