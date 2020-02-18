@@ -7,7 +7,7 @@ import { TelegramBotMachine } from "./bot/TelegramBotMachine";
 
 async function start(): Promise<void> {
   app.listen(app.get("port"), async () => {
-    console.log(
+    logger.info(
       `App is running at http://localhost:${app.get("port")} in ${app.get(
         "env"
       )}`

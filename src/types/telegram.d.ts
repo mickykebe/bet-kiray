@@ -45,11 +45,26 @@ export interface Message {
   document?: any;
   animation?: any;
   game?: any;
-  photo?: any[];
+  photo?: PhotoSize[];
   sticker?: any;
   video?: any;
   voice?: any;
   video_note?: any;
+}
+
+export interface PhotoSize {
+  file_id: string;
+  file_unique_id: string;
+  width: number;
+  height: number;
+  file_size?: number;
+}
+
+export interface File {
+  file_id: string;
+  file_unique_id: string;
+  file_size?: number;
+  file_path?: string;
 }
 
 export interface User {

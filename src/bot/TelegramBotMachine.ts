@@ -7,10 +7,14 @@ import { redis } from "../redis";
 import { HouseType, HouseAvailableFor } from "../utils/values";
 import * as validators from "../utils/validation";
 
+const MAX_PHOTOS = 5;
+
 const MESSAGE_START = "/start";
 const MESSAGE_BACK_TO_MAIN_MENU = "🔚 ወደ ዋናው ማውጫ";
 const MESSAGE_BACK = "⬅️ አንድ ወደ ኋላ";
 const MESSAGE_SKIP = "➡️ ዝለል";
+const MESSAGE_DONE = "✅ ጨርሻለሁ";
+const MESSAGE_DROP_LISTING_PHOTOS = "🗑️ እስካሁን የላኳቸውን ፎቶዎች አጥፋ";
 const MESSAGE_POST_HOUSE = "🏠 የቤት ማስታወቅያ ፍጠር";
 
 enum MESSAGES_AVAILABLE_FOR {
@@ -41,40 +45,43 @@ const HOUSE_TYPE_MAP = {
   [MESSAGES_HOUSE_TYPE.GuestHouse]: HouseType.GuestHouse
 };
 
-const resolveMessageEvent = (messageText: string) => (
+const messageGuard = (guard: (message: TelegramMessage) => boolean) => (
   _context: Context,
   event: Events
-) => {
-  return (
-    event.type === "RECEIVED_MESSAGE" && event.message.text === messageText
-  );
+): boolean => {
+  return event.type === "RECEIVED_MESSAGE" && guard(event.message);
 };
 
-const resetListingValue = (field: keyof ListingValues) =>
+const setListingValues = (
+  setter: (
+    currentValue: ListingValues,
+    message: TelegramMessage
+  ) => ListingValues
+) =>
   assign<Context>({
-    listingValues: (context): ListingValues => ({
-      ...context.listingValues,
+    listingValues: (context, event) => {
+      const messageEvent = event as EVENT_RECEIVED_MESSAGE;
+      return setter(context.listingValues, messageEvent.message);
+    }
+  });
+
+const resetListingValue = (field: keyof ListingValues) =>
+  setListingValues(listingValue => {
+    return {
+      ...listingValue,
       [field]: undefined
-    })
+    };
   });
 
 const saveListingValue = <T>(
   field: keyof ListingValues,
-  transformer?: (text: string) => T
+  setter: (message: TelegramMessage, currentValue: ListingValues) => T
 ) =>
-  assign<Context, Events>({
-    listingValues: (context, event): ListingValues => {
-      const messageEvent = event as EVENT_RECEIVED_MESSAGE;
-      const text = messageEvent.message.text;
-      if (!text) {
-        return context.listingValues;
-      }
-      const value = !!transformer ? transformer(text) : text;
-      return {
-        ...context.listingValues,
-        [field]: value
-      };
-    }
+  setListingValues((listingValue, message) => {
+    return {
+      ...listingValue,
+      [field]: setter(message, listingValue)
+    };
   });
 
 function yupEventValidator<T extends Yup.MixedSchema>(
@@ -109,6 +116,11 @@ interface StateSchema {
         promptPrice: {};
         waitingPrice: {};
         promptPhotos: {};
+        waitingPhoto: {};
+        sendPhotoDropMessage: {};
+        previewPost: {};
+        waitingPreviewReply: {};
+        savingPost: {};
       };
     };
   };
@@ -131,6 +143,7 @@ interface ListingValues {
   title?: string;
   description?: string;
   price?: string;
+  photoFileIds?: string[];
 }
 
 interface Context {
@@ -357,16 +370,90 @@ export class TelegramBotMachine {
                   ]
                 }
               },
-              promptPhotos: {}
+              promptPhotos: {
+                invoke: {
+                  id: "promptPhotos",
+                  src: "promptPhotos",
+                  onDone: {
+                    target: "waitingPhoto"
+                  }
+                }
+              },
+              waitingPhoto: {
+                on: {
+                  RECEIVED_MESSAGE: [
+                    {
+                      cond: "isEventBack",
+                      target: "promptPrice"
+                    },
+                    {
+                      cond: "isEventDone",
+                      target: "previewPost"
+                    },
+                    {
+                      cond: "isEventDropPhotos",
+                      actions: ["resetPhotos"],
+                      target: "sendPhotoDropMessage"
+                    },
+                    {
+                      cond: "isEventPhoto",
+                      target: "waitingPhoto",
+                      actions: ["savePhoto"]
+                    }
+                  ]
+                }
+              },
+              sendPhotoDropMessage: {
+                invoke: {
+                  id: "sendPhotoDropMessage",
+                  src: "sendPhotoDropMessage",
+                  onDone: {
+                    target: "promptPhotos"
+                  }
+                }
+              },
+              previewPost: {
+                invoke: {
+                  id: "previewPost",
+                  src: "previewPost",
+                  onDone: {
+                    target: "waitingPreviewReply"
+                  }
+                }
+              },
+              waitingPreviewReply: {
+                on: {
+                  RECEIVED_MESSAGE: [
+                    {
+                      cond: "isEventBack",
+                      target: "promptPhotos"
+                    },
+                    {
+                      cond: "isEventDone",
+                      target: "savingPost"
+                    }
+                  ]
+                }
+              },
+              savingPost: {}
             }
           }
         }
       },
       {
         guards: {
-          isEventBack: resolveMessageEvent(MESSAGE_BACK),
-          isEventSkip: resolveMessageEvent(MESSAGE_SKIP),
-          isEventPostJob: resolveMessageEvent(MESSAGE_POST_HOUSE),
+          isEventBack: messageGuard(message => message.text === MESSAGE_BACK),
+          isEventSkip: messageGuard(message => message.text === MESSAGE_SKIP),
+          isEventDone: messageGuard(message => message.text === MESSAGE_DONE),
+          isEventPostJob: messageGuard(
+            message => message.text === MESSAGE_POST_HOUSE
+          ),
+          isEventPhoto: messageGuard(
+            message => !!message.photo && message.photo.length > 0
+          ),
+          isEventDropPhotos: messageGuard(
+            message => message.text === MESSAGE_DROP_LISTING_PHOTOS
+          ),
           availabilityValid: yupEventValidator(
             validators.houseAvailabilityValidator,
             (text: string) => AVAILABLE_FOR_MAP[text as MESSAGES_AVAILABLE_FOR]
@@ -385,29 +472,49 @@ export class TelegramBotMachine {
           resetAvailability: resetListingValue("availability"),
           saveAvailability: saveListingValue<string>(
             "availability",
-            (messageAvailability: string) =>
-              AVAILABLE_FOR_MAP[messageAvailability as MESSAGES_AVAILABLE_FOR]
+            message => {
+              return AVAILABLE_FOR_MAP[message.text as MESSAGES_AVAILABLE_FOR];
+            }
           ),
           resetHouseType: resetListingValue("houseType"),
           saveHouseType: saveListingValue<string>(
             "houseType",
-            (houseType: string) =>
-              HOUSE_TYPE_MAP[houseType as MESSAGES_HOUSE_TYPE]
+            message => HOUSE_TYPE_MAP[message.text as MESSAGES_HOUSE_TYPE]
           ),
           resetRooms: resetListingValue("rooms"),
-          saveRooms: saveListingValue<number>("rooms", rooms =>
-            parseInt(rooms)
+          saveRooms: saveListingValue<number>("rooms", message =>
+            parseInt(message.text as string)
           ),
           resetBathrooms: resetListingValue("bathrooms"),
-          saveBathrooms: saveListingValue<number>("bathrooms", bathrooms =>
-            parseInt(bathrooms)
+          saveBathrooms: saveListingValue<number>("bathrooms", message =>
+            parseInt(message.text as string)
           ),
           resetTitle: resetListingValue("title"),
-          saveTitle: saveListingValue("title"),
+          saveTitle: saveListingValue<string>(
+            "title",
+            message => message.text as string
+          ),
           resetDescription: resetListingValue("description"),
-          saveDescription: saveListingValue("description"),
+          saveDescription: saveListingValue<string>(
+            "description",
+            message => message.text as string
+          ),
           resetPrice: resetListingValue("price"),
-          savePrice: saveListingValue("price")
+          savePrice: saveListingValue<string>(
+            "price",
+            message => message.text as string
+          ),
+          resetPhotos: resetListingValue("photoFileIds"),
+          savePhoto: saveListingValue<string[]>(
+            "photoFileIds",
+            (message, listingValues) => {
+              const fileIds = listingValues.photoFileIds || [];
+              if (message.photo && message.photo.length > 0) {
+                fileIds.push(message.photo[0].file_id);
+              }
+              return fileIds.slice(-MAX_PHOTOS);
+            }
+          )
         },
         services: {
           promptMainMenu: this.promptMainMenu,
@@ -417,7 +524,10 @@ export class TelegramBotMachine {
           promptBathrooms: this.promptBathrooms,
           promptTitle: this.promptTitle,
           promptDescription: this.promptDescription,
-          promptPrice: this.promptPrice
+          promptPrice: this.promptPrice,
+          promptPhotos: this.promptPhotos,
+          sendPhotoDropMessage: this.sendPhotoDropMessage,
+          previewPost: this.previewPost
         }
       }
     );
@@ -555,8 +665,8 @@ export class TelegramBotMachine {
     await this.telegramBot.sendMessage(
       context.telegramUserId,
       `ቤቱን በአንድ አረፍተነገር ግለጽ
-      
-*(ምሳሌ፦ "ጀሞ ሰፈር የሚከራይ ባለ አንድ መኝታ ቤት ኮንዶሚንየም)*`,
+
+_(ምሳሌ፦ "ጀሞ ሰፈር የሚከራይ ባለ አንድ መኝታ ቤት ኮንዶሚንየም)_`,
       {
         parseMode: "Markdown",
         replyMarkup: {
@@ -596,6 +706,50 @@ export class TelegramBotMachine {
         resize_keyboard: true
       }
     });
+  };
+
+  private promptPhotos = async (context: Context) => {
+    await this.telegramBot.sendMessage(
+      context.telegramUserId,
+      `የቤቱ ፎቶ ካለህ አሁን ላክልኝ፡፡ እስከ 5 ፎቶ መቀበል እችላለሁ፡፡
+
+_(ፎቶ ከሌለህ ጨርሻለሁን ተጫን፡፡ )_`,
+      {
+        parseMode: "Markdown",
+        replyMarkup: {
+          keyboard: [
+            [{ text: MESSAGE_BACK }, { text: MESSAGE_DONE }],
+            [{ text: MESSAGE_DROP_LISTING_PHOTOS }],
+            [{ text: MESSAGE_BACK_TO_MAIN_MENU }]
+          ],
+          resize_keyboard: true
+        }
+      }
+    );
+  };
+
+  private sendPhotoDropMessage = async (context: Context) => {
+    await this.telegramBot.sendMessage(
+      context.telegramUserId,
+      `ያስቀመጥካቸው ፎቶዎች ካሉ ጠፍተዋል፡፡`
+    );
+  };
+
+  private previewPost = async (context: Context) => {
+    console.log(context.listingValues);
+    await this.telegramBot.sendMessage(
+      context.telegramUserId,
+      `This is a preview`,
+      {
+        replyMarkup: {
+          keyboard: [
+            [{ text: MESSAGE_BACK }, { text: MESSAGE_DONE }],
+            [{ text: MESSAGE_BACK_TO_MAIN_MENU }]
+          ],
+          resize_keyboard: true
+        }
+      }
+    );
   };
 
   private getPersistedMachineState = async (
