@@ -736,11 +736,29 @@ _(ፎቶ ከሌለህ ጨርሻለሁን ተጫን፡፡ )_`,
   };
 
   private previewPost = async (context: Context) => {
-    console.log(context.listingValues);
+    const listing = context.listingValues;
     await this.telegramBot.sendMessage(
       context.telegramUserId,
-      `This is a preview`,
+      `*📝 Title:* \`\`\`${listing.title}\`\`\`
+
+*🤝 Available For:* \`${listing.availability}\`
+
+*🏘️ House Type:* \`${listing.houseType}\`${
+        !!listing.price ? `\n\n*💲 Price:* \`\`\`${listing.price}\`\`\`` : ""
+      }${
+        !!listing.rooms ? `\n\n*🚪 Rooms:* \`\`\`${listing.rooms}\`\`\`` : ""
+      }${
+        !!listing.bathrooms
+          ? `\n\n*🛁 Bathrooms:* \`\`\`${listing.bathrooms}\`\`\``
+          : ""
+      }${
+        !!listing.description
+          ? `\n\n*📜 Description:* \`\`\`${listing.description}\`\`\``
+          : ""
+      }
+`,
       {
+        parseMode: "Markdown",
         replyMarkup: {
           keyboard: [
             [{ text: MESSAGE_BACK }, { text: MESSAGE_DONE }],
