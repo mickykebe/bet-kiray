@@ -44,3 +44,31 @@ if (!REDIS_URL && prod) {
   logger.error("No Redis url provided. Set REDIS_URL environment variable");
   process.exit(1);
 }
+
+export const GC_PROJECT_ID = process.env.GC_PROJECT_ID || "";
+
+if (!GC_PROJECT_ID) {
+  logger.error(
+    "No google cloud storage project Id. Set GC_PROJECT_ID environment variable"
+  );
+  process.exit(1);
+}
+
+export const GC_SERVICE_KEY_FILE_NAME =
+  process.env.GC_SERVICE_KEY_FILE_NAME || "";
+
+if (!GC_SERVICE_KEY_FILE_NAME) {
+  logger.error(
+    "No google cloud storage service key file. Set GC_SERVICE_KEY_FILE_NAME environment variable"
+  );
+  process.exit(1);
+}
+
+export const GCS_BUCKET_NAME = process.env.GCS_BUCKET_NAME || "";
+
+if (!GCS_BUCKET_NAME) {
+  logger.error(
+    "No google cloud storage bucket name. Set GCS_BUCKET_NAME environment variable"
+  );
+  process.exit(1);
+}

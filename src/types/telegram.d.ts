@@ -1,3 +1,18 @@
+export interface UnsuccessfulResponse {
+  ok: false;
+  description?: string;
+  error_code: number;
+}
+
+type TelegramResult = File | boolean | Message;
+
+export interface SuccessfulResponse {
+  ok: true;
+  result: TelegramResult;
+}
+
+type Response = SuccessfulResponse | UnsuccessfulResponse;
+
 export interface Update {
   update_id: number;
   message?: Message;

@@ -6,6 +6,7 @@ import * as db from "../db";
 import { redis } from "../redis";
 import { HouseType, HouseAvailableFor } from "../utils/values";
 import * as validators from "../utils/validation";
+import { storageUploader } from "../storageUploader";
 
 const MAX_PHOTOS = 5;
 
@@ -120,7 +121,8 @@ interface StateSchema {
         sendPhotoDropMessage: {};
         previewPost: {};
         waitingPreviewReply: {};
-        savingPost: {};
+        savingListing: {};
+        sendSuccess: {};
       };
     };
   };
@@ -186,9 +188,11 @@ export class TelegramBotMachine {
             initial: "promptHouseAvailability",
             on: {
               START: {
+                actions: ["clearListingValues"],
                 target: "promptMainMenu"
               },
               BACK_TO_MAIN_MENU: {
+                actions: ["clearListingValues"],
                 target: "promptMainMenu"
               }
             },
@@ -430,12 +434,21 @@ export class TelegramBotMachine {
                     },
                     {
                       cond: "isEventDone",
-                      target: "savingPost"
+                      target: "savingListing"
                     }
                   ]
                 }
               },
-              savingPost: {}
+              savingListing: {
+                invoke: {
+                  id: "saveListing",
+                  src: "saveListing",
+                  onDone: {
+                    target: "sendSuccess"
+                  }
+                }
+              },
+              sendSuccess: {}
             }
           }
         }
@@ -514,7 +527,10 @@ export class TelegramBotMachine {
               }
               return fileIds.slice(-MAX_PHOTOS);
             }
-          )
+          ),
+          clearListingValues: assign<Context>({
+            listingValues: {}
+          })
         },
         services: {
           promptMainMenu: this.promptMainMenu,
@@ -527,7 +543,8 @@ export class TelegramBotMachine {
           promptPrice: this.promptPrice,
           promptPhotos: this.promptPhotos,
           sendPhotoDropMessage: this.sendPhotoDropMessage,
-          previewPost: this.previewPost
+          previewPost: this.previewPost,
+          saveListing: this.saveListing
         }
       }
     );
@@ -768,6 +785,32 @@ _(ፎቶ ከሌለህ ጨርሻለሁን ተጫን፡፡ )_`,
         }
       }
     );
+  };
+
+  private saveListing = async (context: Context) => {
+    const { listingValues } = context;
+    const photoFileIds = listingValues.photoFileIds || [];
+    this.telegramBot.sendChatAction(context.telegramUserId, "upload_photo");
+    const photoUrls = await Promise.all(
+      photoFileIds.map(fileId => this.uploadPhotoFromTelegram(fileId))
+    );
+  };
+
+  private uploadPhotoFromTelegram = async (fileId: string) => {
+    const telegramFile = await this.telegramBot.getFile(fileId);
+    if (!telegramFile.file_path) {
+      throw new Error("File path not available for photo");
+    }
+    const pathSegments = telegramFile.file_path.split("/");
+    if (pathSegments.length === 0) {
+      throw new Error("Couldn't extract file name from telegram message");
+    }
+    const filename = pathSegments[pathSegments.length - 1];
+    const { data: fileStream } = await this.telegramBot.downloadFile(
+      telegramFile.file_path
+    );
+    const url = await storageUploader.upload(filename, fileStream);
+    return url;
   };
 
   private getPersistedMachineState = async (
