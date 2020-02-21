@@ -10,7 +10,7 @@ import {
 class CloudStorageUploader {
   constructor(private storage: Storage, private bucketName: string) {}
 
-  async upload(filename: string, contentStream: any): Promise<String> {
+  async upload(filename: string, contentStream: any): Promise<string> {
     const bucket = this.storage.bucket(this.bucketName);
     const gcsFileName = Date.now() + filename;
     const file = bucket.file(gcsFileName);

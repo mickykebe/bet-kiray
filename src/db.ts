@@ -16,6 +16,81 @@ interface User {
   role: string;
 }
 
+interface Listing {
+  id: number;
+  available_for: string;
+  house_type: string;
+  title: string;
+  description?: string;
+  rooms?: number;
+  bathrooms?: number;
+  price?: string;
+  owner: number;
+  approval_status: string;
+  created: Date;
+}
+
+export interface HouseListing extends Listing {
+  photos: ListingPhoto[];
+}
+
+interface ListingPhoto {
+  id: number;
+  listing_id: number;
+  photo_url: string;
+}
+
+interface ListingInput {
+  title: string;
+  availableFor: string;
+  houseType: string;
+  rooms?: number;
+  bathrooms?: number;
+  description?: string;
+  price?: string;
+  photos?: string[];
+}
+
+export async function createListing(values: ListingInput, userId: number) {
+  return await knex.transaction(async trx => {
+    let rows = await trx<HouseListing>("house_listing")
+      .insert({
+        available_for: values.availableFor,
+        house_type: values.houseType,
+        title: values.title,
+        description: values.description,
+        rooms: values.rooms,
+        bathrooms: values.bathrooms,
+        price: values.price,
+        owner: userId
+      })
+      .returning("*");
+
+    if (rows.length !== 1) {
+      throw new Error("Problem occurred inserting listing");
+    }
+
+    const row = rows[0];
+
+    let photos: ListingPhoto[] = [];
+    if (values.photos && values.photos.length > 0) {
+      photos = await trx<ListingPhoto>("listing_photo").insert(
+        values.photos.map(url => {
+          return {
+            listing_id: row["id"],
+            photo_url: url
+          };
+        }),
+        "*"
+      );
+    }
+    return {
+      ...row,
+      photos
+    } as HouseListing;
+  });
+}
+
 export async function findOrCreateTelegramUser(
   telegramUser: TelegramUser,
   role: string

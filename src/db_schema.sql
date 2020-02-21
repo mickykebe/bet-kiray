@@ -16,7 +16,13 @@ CREATE TABLE house_listing (
   rooms INTEGER CHECK (rooms > 0),
   bathrooms INTEGER CHECK (bathrooms > 0),
   price TEXT,
-  owner INTEGER REFERENCES users(id) NOT NULL ON DELETE CASCADE,
+  owner INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   approval_status TEXT NOT NULL CONSTRAINT approval_values CHECK (approval_status IN ('Pending', 'Active', 'Declined', 'Closed')) DEFAULT 'Pending',
   created TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE listing_photo(
+  id SERIAL PRIMARY KEY,
+  listing_id INTEGER NOT NULL REFERENCES house_listing(id) ON DELETE CASCADE,
+  photo_url TEXT NOT NULL
 );

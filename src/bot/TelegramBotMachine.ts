@@ -2,11 +2,12 @@ import { Machine, State, StateMachine, interpret, assign } from "xstate";
 import { TelegramBot } from "./TelegramBot";
 import Yup from "yup";
 import { Message as TelegramMessage } from "../types/telegram";
-import * as db from "../db";
+import { HouseListing, createListing, findOrCreateTelegramUser } from "../db";
 import { redis } from "../redis";
 import { HouseType, HouseAvailableFor } from "../utils/values";
 import * as validators from "../utils/validation";
 import { storageUploader } from "../storageUploader";
+import { logger } from "../utils/logger";
 
 const MAX_PHOTOS = 5;
 
@@ -15,6 +16,7 @@ const MESSAGE_BACK_TO_MAIN_MENU = "🔚 ወደ ዋናው ማውጫ";
 const MESSAGE_BACK = "⬅️ አንድ ወደ ኋላ";
 const MESSAGE_SKIP = "➡️ ዝለል";
 const MESSAGE_DONE = "✅ ጨርሻለሁ";
+const MESSAGE_RETRY = "🔄 ደግመህ ሞክር";
 const MESSAGE_DROP_LISTING_PHOTOS = "🗑️ እስካሁን የላኳቸውን ፎቶዎች አጥፋ";
 const MESSAGE_POST_HOUSE = "🏠 የቤት ማስታወቅያ ፍጠር";
 
@@ -122,11 +124,15 @@ interface StateSchema {
         previewPost: {};
         waitingPreviewReply: {};
         savingListing: {};
-        sendSuccess: {};
+        sendSuccessSaving: {};
+        sendError: {};
+        waitingErrorReply: {};
       };
     };
   };
 }
+
+const EVENT_CLOSE_JOB = "CLOSE_JOB";
 
 type EVENT_START = { type: "START" };
 type EVENT_BACK_TO_MAIN_MENU = { type: "BACK_TO_MAIN_MENU" };
@@ -152,6 +158,7 @@ interface Context {
   telegramUserId: number;
   userId: number;
   listingValues: ListingValues;
+  listing?: HouseListing;
 }
 
 export class TelegramBotMachine {
@@ -444,11 +451,42 @@ export class TelegramBotMachine {
                   id: "saveListing",
                   src: "saveListing",
                   onDone: {
-                    target: "sendSuccess"
+                    target: "sendSuccessSaving",
+                    actions: ["clearListingValues", "saveListing"]
+                  },
+                  onError: {
+                    target: "sendError"
                   }
                 }
               },
-              sendSuccess: {}
+              sendError: {
+                invoke: {
+                  id: "sendError",
+                  src: "sendError",
+                  onDone: {
+                    target: "waitingErrorReply"
+                  }
+                }
+              },
+              waitingErrorReply: {
+                on: {
+                  RECEIVED_MESSAGE: [
+                    {
+                      cond: "isEventRetry",
+                      target: "savingListing"
+                    }
+                  ]
+                }
+              },
+              sendSuccessSaving: {
+                invoke: {
+                  id: "sendSuccessSaving",
+                  src: "sendSuccessSaving",
+                  onDone: {
+                    target: "#botMachine.promptMainMenu"
+                  }
+                }
+              }
             }
           }
         }
@@ -458,6 +496,7 @@ export class TelegramBotMachine {
           isEventBack: messageGuard(message => message.text === MESSAGE_BACK),
           isEventSkip: messageGuard(message => message.text === MESSAGE_SKIP),
           isEventDone: messageGuard(message => message.text === MESSAGE_DONE),
+          isEventRetry: messageGuard(message => message.text === MESSAGE_RETRY),
           isEventPostJob: messageGuard(
             message => message.text === MESSAGE_POST_HOUSE
           ),
@@ -530,6 +569,9 @@ export class TelegramBotMachine {
           ),
           clearListingValues: assign<Context>({
             listingValues: {}
+          }),
+          saveListing: assign<Context>({
+            listing: (context, event: any) => event.data as HouseListing
           })
         },
         services: {
@@ -544,7 +586,9 @@ export class TelegramBotMachine {
           promptPhotos: this.promptPhotos,
           sendPhotoDropMessage: this.sendPhotoDropMessage,
           previewPost: this.previewPost,
-          saveListing: this.saveListing
+          saveListing: this.saveListing,
+          sendError: this.sendError,
+          sendSuccessSaving: this.sendSuccessSaving
         }
       }
     );
@@ -561,7 +605,7 @@ export class TelegramBotMachine {
     if (previousState) {
       currentState = botMachine.resolveState(previousState);
     } else {
-      const user = await db.findOrCreateTelegramUser(telegramUser, "user");
+      const user = await findOrCreateTelegramUser(telegramUser, "user");
       botMachine = this.machine.withContext({
         ...this.machine.context,
         userId: user.id,
@@ -752,28 +796,33 @@ _(ፎቶ ከሌለህ ጨርሻለሁን ተጫን፡፡ )_`,
     );
   };
 
+  private jobMessage = (values: ListingValues) => {
+    return `*📝 Title:* \`\`\`${values.title}\`\`\`
+
+*🤝 Available For:* \`${values.availability}\`
+    
+*🏘️ House Type:* \`${values.houseType}\`${
+      !!values.price ? `\n\n*💲 Price:* \`\`\`${values.price}\`\`\`` : ""
+    }${!!values.rooms ? `\n\n*🚪 Rooms:* \`\`\`${values.rooms}\`\`\`` : ""}${
+      !!values.bathrooms
+        ? `\n\n*🛁 Bathrooms:* \`\`\`${values.bathrooms}\`\`\``
+        : ""
+    }${
+      !!values.description
+        ? `\n\n*📜 Description:* \`\`\`${values.description}\`\`\``
+        : ""
+    }`;
+  };
+
   private previewPost = async (context: Context) => {
     const listing = context.listingValues;
     await this.telegramBot.sendMessage(
       context.telegramUserId,
-      `*📝 Title:* \`\`\`${listing.title}\`\`\`
-
-*🤝 Available For:* \`${listing.availability}\`
-
-*🏘️ House Type:* \`${listing.houseType}\`${
-        !!listing.price ? `\n\n*💲 Price:* \`\`\`${listing.price}\`\`\`` : ""
-      }${
-        !!listing.rooms ? `\n\n*🚪 Rooms:* \`\`\`${listing.rooms}\`\`\`` : ""
-      }${
-        !!listing.bathrooms
-          ? `\n\n*🛁 Bathrooms:* \`\`\`${listing.bathrooms}\`\`\``
+      `${this.jobMessage(listing)}${
+        !!listing.photoFileIds && listing.photoFileIds.length > 0
+          ? `\n\n*📷 Photos:* \`\`\`${listing.photoFileIds.length}\`\`\``
           : ""
-      }${
-        !!listing.description
-          ? `\n\n*📜 Description:* \`\`\`${listing.description}\`\`\``
-          : ""
-      }
-`,
+      }`,
       {
         parseMode: "Markdown",
         replyMarkup: {
@@ -788,15 +837,33 @@ _(ፎቶ ከሌለህ ጨርሻለሁን ተጫን፡፡ )_`,
   };
 
   private saveListing = async (context: Context) => {
-    const { listingValues } = context;
-    const photoFileIds = listingValues.photoFileIds || [];
-    this.telegramBot.sendChatAction(context.telegramUserId, "upload_photo");
-    const photoUrls = await Promise.all(
-      photoFileIds.map(fileId => this.uploadPhotoFromTelegram(fileId))
-    );
+    try {
+      const { listingValues, userId } = context;
+      const photoFileIds = listingValues.photoFileIds || [];
+      this.telegramBot.sendChatAction(context.telegramUserId, "typing");
+      const photoUrls = await Promise.all(
+        photoFileIds.map(fileId => this.uploadPhotoFromTelegram(fileId))
+      );
+      const listing = await createListing(
+        {
+          title: listingValues.title as string,
+          availableFor: listingValues.availability as string,
+          houseType: listingValues.houseType as string,
+          rooms: listingValues.rooms,
+          bathrooms: listingValues.bathrooms,
+          description: listingValues.description,
+          price: listingValues.price,
+          photos: photoUrls
+        },
+        userId
+      );
+      return listing;
+    } catch (err) {
+      logger.error(err);
+    }
   };
 
-  private uploadPhotoFromTelegram = async (fileId: string) => {
+  private uploadPhotoFromTelegram = async (fileId: string): Promise<string> => {
     const telegramFile = await this.telegramBot.getFile(fileId);
     if (!telegramFile.file_path) {
       throw new Error("File path not available for photo");
@@ -811,6 +878,62 @@ _(ፎቶ ከሌለህ ጨርሻለሁን ተጫን፡፡ )_`,
     );
     const url = await storageUploader.upload(filename, fileStream);
     return url;
+  };
+
+  private sendError = async (context: Context) => {
+    await this.telegramBot.sendMessage(
+      context.telegramUserId,
+      `😬 የሆነ ችግር አጋጥሞኝ ቤቱን መመዝገብ አልቻልኩም፡፡ ቆይተህ ሞክር፡፡`,
+      {
+        replyMarkup: {
+          keyboard: [
+            [{ text: MESSAGE_RETRY }],
+            [{ text: MESSAGE_BACK_TO_MAIN_MENU }]
+          ],
+          resize_keyboard: true
+        }
+      }
+    );
+  };
+
+  private sendSuccessSaving = async (context: Context) => {
+    const listing = context.listing as HouseListing;
+    await this.telegramBot.sendMessage(
+      context.telegramUserId,
+      `🎉🎉🎉የቤቱ ምዝገባ ተሳክቷል🎉🎉🎉
+
+የተመዘገበውን ገምግመን ስንፈቅድ ቤቱ በቻናላችን ላይ ይለቀቃል፡፡`
+    );
+    await this.telegramBot.sendMessage(
+      context.telegramUserId,
+      this.jobMessage({
+        title: listing.title,
+        availability: listing.available_for,
+        houseType: listing.house_type,
+        price: listing.price,
+        rooms: listing.rooms,
+        bathrooms: listing.bathrooms,
+        description: listing.description
+      }),
+      {
+        parseMode: "Markdown",
+        replyMarkup: {
+          inline_keyboard: [
+            [
+              {
+                text: `✋ ቤቱ ${
+                  listing.available_for === "Rent" ? "ተከራይቷል" : "ተሽጧል"
+                }`,
+                callback_data: JSON.stringify({
+                  event: EVENT_CLOSE_JOB,
+                  id: listing.id
+                })
+              }
+            ]
+          ]
+        }
+      }
+    );
   };
 
   private getPersistedMachineState = async (
