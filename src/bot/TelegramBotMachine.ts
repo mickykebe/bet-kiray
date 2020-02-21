@@ -132,7 +132,7 @@ interface StateSchema {
   };
 }
 
-const EVENT_CLOSE_JOB = "CLOSE_JOB";
+export const EVENT_CLOSE_JOB = "CLOSE_JOB";
 
 type EVENT_START = { type: "START" };
 type EVENT_BACK_TO_MAIN_MENU = { type: "BACK_TO_MAIN_MENU" };

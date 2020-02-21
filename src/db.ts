@@ -91,6 +91,15 @@ export async function createListing(values: ListingInput, userId: number) {
   });
 }
 
+export async function getUserByTelegramId(
+  telegramUserId: number
+): Promise<User | undefined> {
+  const row = await knex<User>("users")
+    .first()
+    .where("telegram_id", telegramUserId);
+  return row;
+}
+
 export async function findOrCreateTelegramUser(
   telegramUser: TelegramUser,
   role: string
@@ -116,4 +125,16 @@ export async function findOrCreateTelegramUser(
     throw new Error("Problem occurre creating telegram user");
   }
   return users[0];
+}
+
+export function closeListing(id: number, { ownerId }: { ownerId?: number }) {
+  return knex<Listing>("house_listing")
+    .where("id", id)
+    .whereIn("approval_status", ["Pending", "Active"])
+    .update({
+      approval_status: "Closed",
+      ...(!!ownerId && {
+        owner: ownerId
+      })
+    });
 }

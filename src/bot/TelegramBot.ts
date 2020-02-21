@@ -42,6 +42,9 @@ export class TelegramBot extends EventEmitter {
     if (update.message) {
       this.emit("message", update.message);
     }
+    if (update.callback_query) {
+      this.emit("callback_query", update.callback_query);
+    }
     res.sendStatus(200);
   };
 
@@ -61,7 +64,10 @@ export class TelegramBot extends EventEmitter {
     return data.result;
   }
 
-  async telegramMethod(method: string, config: AxiosRequestConfig) {
+  async telegramMethod(
+    method: string,
+    config: AxiosRequestConfig
+  ): Promise<TelegramResult> {
     return this.telegramGenericMethod(this.telegramBaseUrl, method, config);
   }
 
@@ -105,6 +111,25 @@ export class TelegramBot extends EventEmitter {
         file_id: fileId
       }
     }) as Promise<TelegramFile>;
+  }
+
+  async answerCallbackQuery(
+    callbackQueryId: string,
+    {
+      text,
+      showAlert,
+      url,
+      cacheTime
+    }: { text?: string; showAlert?: boolean; url?: string; cacheTime?: number }
+  ) {
+    return this.telegramMethod("answerCallbackQuery", {
+      data: {
+        callback_query_id: callbackQueryId,
+        text,
+        show_alert: showAlert,
+        cache_time: cacheTime
+      }
+    }) as Promise<boolean>;
   }
 
   downloadFile(filePath: string): Promise<AxiosResponse> {

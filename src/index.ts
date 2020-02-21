@@ -2,8 +2,7 @@ import { TELEGRAM_BOT_TOKEN, APP_ROOT_URL } from "./utils/secrets";
 import { logger } from "./utils/logger";
 import { TelegramBot } from "./bot/TelegramBot";
 import { app } from "./app";
-import { Message } from "./types/telegram";
-import { TelegramBotMachine } from "./bot/TelegramBotMachine";
+import { BotController } from "./bot/BotController";
 
 async function start(): Promise<void> {
   app.listen(app.get("port"), async () => {
@@ -21,11 +20,7 @@ async function start(): Promise<void> {
       process.exit(1);
     }
 
-    const botMachine = new TelegramBotMachine(telegramBot);
-
-    telegramBot.on("message", (message: Message) => {
-      botMachine.run(message);
-    });
+    new BotController(telegramBot);
   });
 }
 
