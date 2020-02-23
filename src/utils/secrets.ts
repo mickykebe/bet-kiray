@@ -72,3 +72,10 @@ if (!GCS_BUCKET_NAME) {
   );
   process.exit(1);
 }
+
+export const JWT_SECRET = process.env.JWT_SECRET || "";
+
+if (!JWT_SECRET) {
+  logger.error("No jwt secret. Set JWT_SECRET environment variable");
+  process.exit(1);
+}
