@@ -159,7 +159,11 @@ export async function getListings({
 } = {}) {
   let query = knex<HouseListing>("house_listing")
     .select(selectColumns("house_listing", houseListingColumns))
-    .select(knex.raw(`json_agg(listing_photo.photo_url) as photos`))
+    .select(
+      knex.raw(
+        `coalesce(json_agg(listing_photo.photo_url) filter (where listing_photo.photo_url IS NOT NULL), '[]') as photos`
+      )
+    )
     .leftJoin("listing_photo", "house_listing.id", "listing_photo.listing_id")
     .groupBy("house_listing.id");
 
