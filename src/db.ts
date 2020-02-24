@@ -100,6 +100,13 @@ export async function getUserByTelegramId(
   return row;
 }
 
+export async function getUserById(id: number): Promise<User | undefined> {
+  const row = await knex<User>("users")
+    .first()
+    .where("id", id);
+  return row;
+}
+
 export async function findOrCreateTelegramUser(
   telegramUser: TelegramUser,
   role: string
