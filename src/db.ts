@@ -51,6 +51,24 @@ interface ListingInput {
   photos?: string[];
 }
 
+const houseListingColumns = [
+  "id",
+  "available_for",
+  "house_type",
+  "title",
+  "description",
+  "rooms",
+  "bathrooms",
+  "price",
+  "owner",
+  "approval_status",
+  "created"
+];
+
+function selectColumns(tableName: string, columns: string[]) {
+  return columns.map(columnName => `${tableName}.${columnName}`);
+}
+
 export async function createListing(values: ListingInput, userId: number) {
   return await knex.transaction(async trx => {
     let rows = await trx<HouseListing>("house_listing")
@@ -132,6 +150,33 @@ export async function findOrCreateTelegramUser(
     throw new Error("Problem occurre creating telegram user");
   }
   return users[0];
+}
+
+export async function getListings({
+  approvalStatus = []
+}: {
+  approvalStatus?: string | string[];
+} = {}) {
+  let query = knex<HouseListing>("house_listing")
+    .select(selectColumns("house_listing", houseListingColumns))
+    .select(knex.raw(`json_agg(listing_photo.photo_url) as photos`))
+    .leftJoin("listing_photo", "house_listing.id", "listing_photo.listing_id")
+    .groupBy("house_listing.id");
+
+  if (approvalStatus) {
+    let approvalIn: string[] = [];
+    if (typeof approvalStatus === "string") {
+      approvalIn = [approvalStatus];
+    } else {
+      approvalIn = approvalStatus;
+    }
+
+    if (approvalIn.length > 0) {
+      query = query.whereIn("house_listing.approval_status", approvalIn);
+    }
+  }
+
+  return await query;
 }
 
 export function closeListing(id: number, { ownerId }: { ownerId?: number }) {

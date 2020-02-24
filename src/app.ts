@@ -2,7 +2,8 @@ import express, { Request, Response, NextFunction } from "express";
 import bodyParser from "body-parser";
 import { PORT, JWT_SECRET } from "./utils/secrets";
 import expressJwt from "express-jwt";
-import { telegramLogin, getUser } from "./controllers/user";
+import { telegramLogin, getUser, hasRole } from "./controllers/user";
+import { pendingListings } from "./controllers/listing";
 
 const app = express();
 
@@ -24,6 +25,11 @@ function catchErrors(
 
 app.post("/api/telegram-login", catchErrors(telegramLogin));
 app.get("/api/get-user", authenticate, catchErrors(getUser));
-app.get("/api/pending-listings", authenticate, (req, res) => {});
+app.get(
+  "/api/pending-listings",
+  authenticate,
+  catchErrors(hasRole("admin")),
+  catchErrors(pendingListings)
+);
 
 export { app };

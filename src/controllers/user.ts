@@ -2,7 +2,7 @@ import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET, TELEGRAM_BOT_TOKEN } from "../utils/secrets";
 import { findOrCreateTelegramUser, getUserById } from "../db";
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 
 export async function telegramLogin(req: Request, res: Response) {
   const { hash, ...userData } = req.body;
@@ -46,4 +46,17 @@ export async function getUser(req: AuthRequest, res: Response) {
       user
     });
   }
+}
+
+export function hasRole(role: string) {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (req.user) {
+      const user = await getUserById(req.user.id);
+      if (user && user.role === role) {
+        next();
+        return;
+      }
+    }
+  };
+  throw new Error("User doesn't have the role to execute this action");
 }
