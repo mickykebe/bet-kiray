@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import { UserContext } from "./user-context";
 import { Redirect } from "react-router-dom";
 import { api } from "./api";
@@ -7,23 +7,24 @@ import { makeStyles, Typography } from "@material-ui/core";
 import ListingCard from "./ListingCard";
 import { useQuery } from "react-query";
 import LoadingBackdrop from "./LoadingBackdrop";
+import ListingView from "./ListingView";
 
 const useStyles = makeStyles(theme => {
   return {
     root: {
-      padding: theme.spacing(2)
+      padding: theme.spacing(4)
     },
-    title: {
-      marginBottom: theme.spacing(2)
-    },
-    listing: {
-      marginBottom: theme.spacing(1)
-    },
+    listing: {},
     container: {
       display: "grid",
       gridTemplateColumns: "auto 2fr"
     },
-    listings: {},
+    listings: {
+      background: "white"
+    },
+    title: {
+      padding: theme.spacing(2)
+    },
     activeListing: {}
   };
 });
@@ -35,6 +36,7 @@ interface PendingListingsResult {
 export default function PendingListings() {
   const user = useContext(UserContext);
   const classes = useStyles();
+  const [selectedListingId, setSelectedListingId] = useState<number>(-1);
   const { data, isLoading } = useQuery<PendingListingsResult, any>(
     "pendingListings",
     (): Promise<PendingListingsResult> => {
@@ -46,6 +48,9 @@ export default function PendingListings() {
       });
     }
   );
+  const selectedListing = data?.listings.find(
+    listing => listing.id === selectedListingId
+  );
   if (!user || user.role !== "admin") {
     return <Redirect to="/" />;
   }
@@ -54,20 +59,24 @@ export default function PendingListings() {
   }
   return (
     <div className={classes.root}>
-      <Typography variant="h4" className={classes.title}>
-        Pending Jobs
-      </Typography>
       <div className={classes.container}>
         <div className={classes.listings}>
+          <Typography variant="h6" className={classes.title}>
+            Pending Jobs
+          </Typography>
           {data?.listings.map(listing => (
             <ListingCard
               key={listing.id}
               className={classes.listing}
               houseListing={listing}
+              selected={listing.id === selectedListingId}
+              onClick={() => setSelectedListingId(listing.id)}
             />
           ))}
         </div>
-        <div className={classes.activeListing}></div>
+        <div className={classes.activeListing}>
+          {!!selectedListing && <ListingView listing={selectedListing} />}
+        </div>
       </div>
     </div>
   );

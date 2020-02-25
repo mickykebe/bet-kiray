@@ -1,72 +1,103 @@
 import React from "react";
 import { HouseListing } from "./types";
 import {
-  Card,
   makeStyles,
   CardMedia,
-  CardContent,
   Typography,
   CardActionArea
 } from "@material-ui/core";
 import BathtubIcon from "@material-ui/icons/Bathtub";
 import MeetingRoomIcon from "@material-ui/icons/MeetingRoom";
-import clsx from "clsx";
 import ListingInfoItem from "./ListingInfoItem";
 
 interface Props {
   houseListing: HouseListing;
   className?: string;
+  selected?: boolean;
+  onClick: () => void;
 }
 
 const useStyles = makeStyles(theme => {
   return {
-    root: {
-      display: "flex"
+    container: {
+      paddingTop: theme.spacing(1),
+      paddingBottom: theme.spacing(1),
+      paddingLeft: theme.spacing(2),
+      paddingRight: theme.spacing(2),
+      display: "flex",
+      alignItems: "stretch"
     },
     cover: {
-      width: 150
+      width: 130,
+      height: 130
     },
     title: {
-      marginBottom: theme.spacing(1)
+      marginBottom: theme.spacing(2),
+      fontWeight: 800,
+      lineHeight: 1
     },
     info: {
       marginRight: theme.spacing(2)
+    },
+    details: {
+      display: "flex",
+      flexDirection: "column",
+      paddingLeft: theme.spacing(2),
+      justifyContent: "space-between"
+    },
+    infoItems: {
+      display: "flex"
+    },
+    selectedBar: {
+      backgroundColor: "#49c",
+      width: 2,
+      position: "absolute",
+      top: 0,
+      bottom: 0
     }
   };
 });
 
-export default function ListingCard({ houseListing, className }: Props) {
+export default function ListingCard({
+  houseListing,
+  className,
+  selected = false,
+  onClick
+}: Props) {
   const classes = useStyles();
   return (
-    <Card className={clsx(classes.root, className)}>
-      {houseListing.photos.length > 0 && (
-        <CardMedia
-          className={classes.cover}
-          image={houseListing.photos[0]}
-          title="Live from space album cover"
-        />
-      )}
-      <CardActionArea>
-        <CardContent>
-          <Typography variant="h5" component="h5" className={classes.title}>
+    <CardActionArea className={className} onClick={onClick}>
+      <div className={classes.container}>
+        {houseListing.photos.length > 0 && (
+          <CardMedia
+            className={classes.cover}
+            image={houseListing.photos[0]}
+            title="Live from space album cover"
+          />
+        )}
+        <div className={classes.details}>
+          <Typography variant="h6" className={classes.title}>
             {houseListing.title}
           </Typography>
-          {!!houseListing.rooms && (
-            <ListingInfoItem
-              className={classes.info}
-              Icon={MeetingRoomIcon}
-              text={`${houseListing.rooms} Rooms`}
-            />
-          )}
-          {!!houseListing.bathrooms && (
-            <ListingInfoItem
-              className={classes.info}
-              Icon={BathtubIcon}
-              text={`${houseListing.bathrooms} Baths`}
-            />
-          )}
-        </CardContent>
-      </CardActionArea>
-    </Card>
+          <div className={classes.infoItems}>
+            {!!houseListing.rooms && (
+              <ListingInfoItem
+                className={classes.info}
+                Icon={MeetingRoomIcon}
+                text={`${houseListing.rooms} Rooms`}
+              />
+            )}
+            {!!houseListing.bathrooms && (
+              <ListingInfoItem
+                className={classes.info}
+                Icon={BathtubIcon}
+                text={`${houseListing.bathrooms} Baths`}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+      {selected && <div className={classes.selectedBar} />}
+    </CardActionArea>
   );
 }

@@ -15,7 +15,7 @@ const useStyles = makeStyles(theme => {
       alignItems: "center"
     },
     icon: {
-      marginRight: theme.spacing(1)
+      marginRight: theme.spacing(0.5)
     }
   };
 });

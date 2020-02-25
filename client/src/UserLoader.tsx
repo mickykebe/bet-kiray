@@ -31,7 +31,6 @@ export default function UserLoader({
   onUserFetch,
   children
 }: Props): React.ReactElement {
-  console.log("userloader rendering");
   const [status, dispatch] = useReducer(reducer, "loading");
   useEffect(() => {
     const userToken = localStorage.getItem("token");
