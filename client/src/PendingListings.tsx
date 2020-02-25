@@ -1,10 +1,12 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext } from "react";
 import { UserContext } from "./user-context";
 import { Redirect } from "react-router-dom";
 import { api } from "./api";
 import { HouseListing } from "./types";
-import { Card, makeStyles, Typography } from "@material-ui/core";
+import { makeStyles, Typography } from "@material-ui/core";
 import ListingCard from "./ListingCard";
+import { useQuery } from "react-query";
+import LoadingBackdrop from "./LoadingBackdrop";
 
 const useStyles = makeStyles(theme => {
   return {
@@ -26,22 +28,29 @@ const useStyles = makeStyles(theme => {
   };
 });
 
+interface PendingListingsResult {
+  listings: HouseListing[];
+}
+
 export default function PendingListings() {
   const user = useContext(UserContext);
   const classes = useStyles();
-  const [listings, setListings] = useState<HouseListing[]>([]);
-  useEffect(() => {
-    api("/api/pending-listings", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json"
-      }
-    }).then(({ listings }: { listings: HouseListing[] }) => {
-      setListings(listings);
-    });
-  }, []);
+  const { data, isLoading } = useQuery<PendingListingsResult, any>(
+    "pendingListings",
+    (): Promise<PendingListingsResult> => {
+      return api("/api/pending-listings", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+    }
+  );
   if (!user || user.role !== "admin") {
     return <Redirect to="/" />;
+  }
+  if (isLoading) {
+    return <LoadingBackdrop />;
   }
   return (
     <div className={classes.root}>
@@ -50,8 +59,12 @@ export default function PendingListings() {
       </Typography>
       <div className={classes.container}>
         <div className={classes.listings}>
-          {listings.map(listing => (
-            <ListingCard className={classes.listing} houseListing={listing} />
+          {data?.listings.map(listing => (
+            <ListingCard
+              key={listing.id}
+              className={classes.listing}
+              houseListing={listing}
+            />
           ))}
         </div>
         <div className={classes.activeListing}></div>

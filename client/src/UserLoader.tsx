@@ -1,9 +1,8 @@
 import React, { useEffect, useReducer } from "react";
 import { api } from "./api";
 import { User } from "./types";
-import { Backdrop, CircularProgress } from "@material-ui/core";
-import { makeStyles } from "@material-ui/core/styles";
 import { setAuthToken } from "./api";
+import LoadingBackdrop from "./LoadingBackdrop";
 
 interface Props {
   onUserFetch: (user: User) => void;
@@ -28,21 +27,11 @@ function reducer(state: ReducerState, action: ReducerAction): ReducerState {
   }
 }
 
-const useStyles = makeStyles(theme => {
-  return {
-    backdrop: {
-      zIndex: theme.zIndex.drawer + 1,
-      color: "#fff"
-    }
-  };
-});
-
 export default function UserLoader({
   onUserFetch,
   children
 }: Props): React.ReactElement {
   console.log("userloader rendering");
-  const classes = useStyles();
   const [status, dispatch] = useReducer(reducer, "loading");
   useEffect(() => {
     const userToken = localStorage.getItem("token");
@@ -69,11 +58,7 @@ export default function UserLoader({
   }, [onUserFetch]);
 
   if (status === "loading") {
-    return (
-      <Backdrop className={classes.backdrop} open>
-        <CircularProgress color="inherit" />
-      </Backdrop>
-    );
+    return <LoadingBackdrop />;
   }
 
   return children();
