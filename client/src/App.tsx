@@ -6,23 +6,28 @@ import UserLoader from "./UserLoader";
 import { User } from "./types";
 import Content from "./Content";
 
-const theme = createMuiTheme();
+const theme = createMuiTheme({
+  palette: {
+    background: {
+      default: "#F6F7F9"
+    }
+  }
+});
 
 function App() {
   const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
-  console.log("rendering app");
+  const setUser = (user: User) => {
+    if (!loggedInUser) {
+      setLoggedInUser(user);
+    }
+  };
   return (
     <Fragment>
       <CssBaseline />
       <ThemeProvider theme={theme}>
         <UserContext.Provider value={loggedInUser}>
-          <UserLoader
-            onUserFetch={(user: User) => {
-              if (!loggedInUser) {
-                setLoggedInUser(user);
-              }
-            }}>
-            {() => <Content />}
+          <UserLoader onUserFetch={setUser}>
+            {() => <Content onLogin={setUser} />}
           </UserLoader>
         </UserContext.Provider>
       </ThemeProvider>

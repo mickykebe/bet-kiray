@@ -6,21 +6,25 @@ import { User } from "./types";
 import { UserContext } from "./user-context";
 import { Redirect } from "react-router-dom";
 
-const useStyles = makeStyles({
+const useStyles = makeStyles(theme => ({
   root: {
-    height: "100vh",
     display: "grid",
     alignItems: "center",
-    justifyItems: "center"
+    justifyItems: "center",
+    height: "100%"
   }
-});
+}));
 
 interface LoginResponse {
   user: User;
   token: string;
 }
 
-export default function Home() {
+interface Props {
+  onLogin: (user: User) => void;
+}
+
+export default function Home({ onLogin }: Props) {
   const user = useContext(UserContext);
   const classes = useStyles();
   if (user) {
@@ -38,6 +42,7 @@ export default function Home() {
       body: JSON.stringify(user)
     });
     localStorage.setItem("token", data.token);
+    onLogin(data.user);
   };
 
   return (
