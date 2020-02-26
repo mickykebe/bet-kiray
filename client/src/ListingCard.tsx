@@ -49,7 +49,7 @@ const useStyles = makeStyles(theme => {
       display: "flex"
     },
     selectedBar: {
-      backgroundColor: "#49c",
+      backgroundColor: theme.palette.secondary.main,
       width: 2,
       position: "absolute",
       top: 0,

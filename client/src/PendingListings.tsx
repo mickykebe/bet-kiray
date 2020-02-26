@@ -17,13 +17,18 @@ const useStyles = makeStyles(theme => {
     listing: {},
     container: {
       display: "grid",
-      gridTemplateColumns: "auto 2fr"
+      gridTemplateColumns: "auto 2fr",
+      gridGap: theme.spacing(2)
     },
     listings: {
-      background: "white"
+      background: theme.palette.primary.main,
+      boxShadow: theme.shadows[1]
     },
     title: {
-      padding: theme.spacing(2)
+      paddingTop: theme.spacing(2),
+      paddingLeft: theme.spacing(2),
+      paddingRight: theme.spacing(2),
+      paddingBottom: theme.spacing(1)
     },
     activeListing: {}
   };

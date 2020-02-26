@@ -12,7 +12,8 @@ const useStyles = makeStyles(theme => {
   return {
     root: {
       display: "inline-flex",
-      alignItems: "center"
+      alignItems: "center",
+      fontWeight: 800
     },
     icon: {
       marginRight: theme.spacing(0.5)
