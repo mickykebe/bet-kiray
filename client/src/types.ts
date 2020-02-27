@@ -19,5 +19,5 @@ export interface HouseListing {
   owner: number;
   approval_status: string;
   created: Date;
-  photos: string[];
+  photos?: string[];
 }

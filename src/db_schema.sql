@@ -26,3 +26,8 @@ CREATE TABLE listing_photo(
   listing_id INTEGER NOT NULL REFERENCES house_listing(id) ON DELETE CASCADE,
   photo_url TEXT NOT NULL
 );
+
+CREATE TABLE listing_social_post(
+  listing_id INTEGER PRIMARY KEY REFERENCES house_listing(id) ON DELETE CASCADE,
+  telegram_message_id INTEGER
+);

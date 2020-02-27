@@ -16,7 +16,7 @@ interface User {
   role: string;
 }
 
-interface Listing {
+export interface HouseListing {
   id: number;
   available_for: string;
   house_type: string;
@@ -28,10 +28,7 @@ interface Listing {
   owner: number;
   approval_status: string;
   created: Date;
-}
-
-export interface HouseListing extends Listing {
-  photos: ListingPhoto[];
+  photos?: string[];
 }
 
 interface ListingPhoto {
@@ -90,9 +87,9 @@ export async function createListing(values: ListingInput, userId: number) {
 
     const row = rows[0];
 
-    let photos: ListingPhoto[] = [];
+    let listingPhotos: ListingPhoto[] = [];
     if (values.photos && values.photos.length > 0) {
-      photos = await trx<ListingPhoto>("listing_photo").insert(
+      listingPhotos = await trx<ListingPhoto>("listing_photo").insert(
         values.photos.map(url => {
           return {
             listing_id: row["id"],
@@ -104,7 +101,7 @@ export async function createListing(values: ListingInput, userId: number) {
     }
     return {
       ...row,
-      photos
+      photos: listingPhotos.map(listingPhoto => listingPhoto.photo_url)
     } as HouseListing;
   });
 }
@@ -183,8 +180,21 @@ export async function getListings({
   return await query;
 }
 
+export async function getListingById(id: number) {
+  return knex<HouseListing>("house_listing")
+    .first(selectColumns("house_listing", houseListingColumns))
+    .first(
+      knex.raw(
+        `coalesce(json_agg(listing_photo.photo_url) filter (where listing_photo.photo_url IS NOT NULL), '[]') as photos`
+      )
+    )
+    .leftJoin("listing_photo", "house_listing.id", "listing_photo.listing_id")
+    .groupBy("house_listing.id")
+    .where("house_listing.id", id);
+}
+
 export function closeListing(id: number, { ownerId }: { ownerId?: number }) {
-  return knex<Listing>("house_listing")
+  return knex<HouseListing>("house_listing")
     .where("id", id)
     .whereIn("approval_status", ["Pending", "Active"])
     .update({
@@ -193,4 +203,19 @@ export function closeListing(id: number, { ownerId }: { ownerId?: number }) {
         owner: ownerId
       })
     });
+}
+
+export function approveListing(id: number) {
+  return knex("house_listing")
+    .where("id", id)
+    .update({
+      approval_status: "Active"
+    });
+}
+
+export function createSocialPost(listingId: number, telegramMessageId: number) {
+  return knex("listing_social_post").insert({
+    listing_id: listingId,
+    telegram_message_id: telegramMessageId
+  });
 }

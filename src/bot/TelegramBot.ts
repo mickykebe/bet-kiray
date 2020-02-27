@@ -1,6 +1,5 @@
 import axios, { AxiosResponse, AxiosRequestConfig } from "axios";
 import { EventEmitter } from "events";
-import { Express, Request, Response } from "express";
 import { logger } from "../utils/logger";
 import {
   Update as TelegramUpdate,
@@ -9,7 +8,11 @@ import {
   File as TelegramFile,
   InlineKeyboardMarkup,
   ReplyKeyboardMarkup,
-  TelegramResult
+  TelegramResult,
+  InputMediaPhoto,
+  InputMediaVideo,
+  ReplyKeyboardRemove,
+  ForceReply
 } from "../types/telegram";
 
 const TELEGRAM_API_BASE_URL = `https://api.telegram.org/bot`;
@@ -18,35 +21,18 @@ const TELEGRAM_FILE_BASE_URL = `https://api.telegram.org/file/bot`;
 export class TelegramBot extends EventEmitter {
   telegramBaseUrl: string;
   telegramFileBaseUrl: string;
-  constructor(
-    private botToken: string,
-    private appRootUrl: string,
-    private app: Express
-  ) {
+  constructor(private botToken: string) {
     super();
     this.telegramBaseUrl = TELEGRAM_API_BASE_URL + this.botToken;
     this.telegramFileBaseUrl = TELEGRAM_FILE_BASE_URL + this.botToken;
   }
 
-  async setup(path: string): Promise<void> {
-    const pathEndpoint = `${path}/${this.botToken}`;
-    this.app.post(pathEndpoint, this.updateHandler);
+  async setupWebhook(appRootUrl: string, endpointPath: string): Promise<void> {
     await axios.post(`${this.telegramBaseUrl}/setWebhook`, {
-      url: `${this.appRootUrl}${pathEndpoint}`
+      url: `${appRootUrl}${endpointPath}`
     });
     logger.info("Setup telegram bot webhook");
   }
-
-  private updateHandler = (req: Request, res: Response) => {
-    const update: TelegramUpdate = req.body;
-    if (update.message) {
-      this.emit("message", update.message);
-    }
-    if (update.callback_query) {
-      this.emit("callback_query", update.callback_query);
-    }
-    res.sendStatus(200);
-  };
 
   private async telegramGenericMethod(
     baseUrl: string,
@@ -80,10 +66,16 @@ export class TelegramBot extends EventEmitter {
     text: string,
     {
       replyMarkup,
-      parseMode
+      parseMode,
+      disableWebPagePreview,
+      disableNotification,
+      replyToMessageId
     }: {
       replyMarkup?: InlineKeyboardMarkup | ReplyKeyboardMarkup;
       parseMode?: string;
+      disableWebPagePreview?: boolean;
+      disableNotification?: boolean;
+      replyToMessageId?: number;
     } = {}
   ): Promise<TelegramMessage> {
     return this.telegramMethod("sendMessage", {
@@ -91,9 +83,67 @@ export class TelegramBot extends EventEmitter {
         chat_id: chatId,
         text,
         reply_markup: replyMarkup,
-        parse_mode: parseMode
+        parse_mode: parseMode,
+        disable_web_page_preview: disableWebPagePreview,
+        disable_notification: disableNotification,
+        reply_to_message_id: replyToMessageId
       }
     }) as Promise<TelegramMessage>;
+  }
+
+  sendPhoto(
+    chatId: number | string,
+    photo: string,
+    {
+      caption,
+      parseMode,
+      disableNotification,
+      replyToMessageId,
+      replyMarkup
+    }: {
+      caption?: string;
+      parseMode?: string;
+      disableNotification?: boolean;
+      replyToMessageId?: number;
+      replyMarkup?:
+        | InlineKeyboardMarkup
+        | ReplyKeyboardMarkup
+        | ReplyKeyboardRemove
+        | ForceReply;
+    } = {}
+  ): Promise<TelegramMessage> {
+    return this.telegramMethod("sendPhoto", {
+      data: {
+        chat_id: chatId,
+        photo,
+        caption,
+        parse_mode: parseMode,
+        disable_notification: disableNotification,
+        reply_to_message_id: replyToMessageId,
+        reply_markup: replyMarkup
+      }
+    }) as Promise<TelegramMessage>;
+  }
+
+  sendMediaGroup(
+    chatId: number | string,
+    media: (InputMediaPhoto | InputMediaVideo)[],
+    {
+      disableNotification,
+      replyToMessageId
+    }: {
+      disableNotification?: boolean;
+      replyToMessageId?: number;
+    } = {}
+  ): Promise<TelegramMessage[]> {
+    return this.telegramMethod("sendMediaGroup", {
+      data: {
+        chat_id: chatId,
+        media,
+        disable_notification: disableNotification,
+        reply_to_message_id: replyToMessageId
+      }
+    }) as Promise<TelegramMessage[]>;
   }
 
   sendChatAction(chatId: number | string, action: string): Promise<boolean> {

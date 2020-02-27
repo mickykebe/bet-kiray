@@ -3,6 +3,8 @@ import { logger } from "./utils/logger";
 import { TelegramBot } from "./bot/TelegramBot";
 import { app } from "./app";
 import { BotController } from "./bot/BotController";
+import { TelegramBotMachine } from "./bot/TelegramBotMachine";
+import { TelegramService } from "./bot/TelegramService";
 
 async function start(): Promise<void> {
   app.listen(app.get("port"), async () => {
@@ -12,15 +14,21 @@ async function start(): Promise<void> {
       )}`
     );
 
-    const telegramBot = new TelegramBot(TELEGRAM_BOT_TOKEN, APP_ROOT_URL, app);
+    const telegramBot = new TelegramBot(TELEGRAM_BOT_TOKEN);
+    const botMachine = new TelegramBotMachine(
+      telegramBot,
+      new TelegramService(telegramBot)
+    );
+    const botController = new BotController(telegramBot, botMachine, app);
     try {
-      await telegramBot.setup("/api/telegram");
+      await botController.setup(
+        APP_ROOT_URL,
+        "/api/telegram/" + TELEGRAM_BOT_TOKEN
+      );
     } catch (err) {
       logger.error(err);
       process.exit(1);
     }
-
-    new BotController(telegramBot);
   });
 }
 

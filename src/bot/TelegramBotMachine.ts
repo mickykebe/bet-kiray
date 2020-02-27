@@ -8,6 +8,7 @@ import { HouseType, HouseAvailableFor } from "../utils/values";
 import * as validators from "../utils/validation";
 import { storageUploader } from "../storageUploader";
 import { logger } from "../utils/logger";
+import { TelegramService } from "./TelegramService";
 
 const MAX_PHOTOS = 5;
 
@@ -163,7 +164,10 @@ interface Context {
 
 export class TelegramBotMachine {
   private machine: StateMachine<Context, StateSchema, Events>;
-  constructor(private telegramBot: TelegramBot) {
+  constructor(
+    private telegramBot: TelegramBot,
+    private telegramService: TelegramService
+  ) {
     this.machine = Machine<Context, StateSchema, Events>(
       {
         id: "botMachine",
@@ -796,35 +800,21 @@ _(ፎቶ ከሌለህ ጨርሻለሁን ተጫን፡፡ )_`,
     );
   };
 
-  private jobMessage = (values: ListingValues) => {
-    return `*📝 Title:* \`\`\`${values.title}\`\`\`
-
-*🤝 Available For:* \`${values.availability}\`
-    
-*🏘️ House Type:* \`${values.houseType}\`${
-      !!values.price ? `\n\n*💲 Price:* \`\`\`${values.price}\`\`\`` : ""
-    }${!!values.rooms ? `\n\n*🚪 Rooms:* \`\`\`${values.rooms}\`\`\`` : ""}${
-      !!values.bathrooms
-        ? `\n\n*🛁 Bathrooms:* \`\`\`${values.bathrooms}\`\`\``
-        : ""
-    }${
-      !!values.description
-        ? `\n\n*📜 Description:* \`\`\`${values.description}\`\`\``
-        : ""
-    }`;
-  };
-
   private previewPost = async (context: Context) => {
     const listing = context.listingValues;
-    await this.telegramBot.sendMessage(
+    return this.telegramService.sendListing(
       context.telegramUserId,
-      `${this.jobMessage(listing)}${
-        !!listing.photoFileIds && listing.photoFileIds.length > 0
-          ? `\n\n*📷 Photos:* \`\`\`${listing.photoFileIds.length}\`\`\``
-          : ""
-      }`,
       {
-        parseMode: "Markdown",
+        title: listing.title as string,
+        available_for: listing.availability as string,
+        house_type: listing.houseType as string,
+        price: listing.price,
+        rooms: listing.rooms,
+        bathrooms: listing.bathrooms,
+        description: listing.description,
+        photos: listing.photoFileIds || []
+      },
+      {
         replyMarkup: {
           keyboard: [
             [{ text: MESSAGE_BACK }, { text: MESSAGE_DONE }],
@@ -904,36 +894,26 @@ _(ፎቶ ከሌለህ ጨርሻለሁን ተጫን፡፡ )_`,
 
 የተመዘገበውን ገምግመን ስንፈቅድ ቤቱ በቻናላችን ላይ ይለቀቃል፡፡`
     );
-    await this.telegramBot.sendMessage(
-      context.telegramUserId,
-      this.jobMessage({
-        title: listing.title,
-        availability: listing.available_for,
-        houseType: listing.house_type,
-        price: listing.price,
-        rooms: listing.rooms,
-        bathrooms: listing.bathrooms,
-        description: listing.description
-      }),
-      {
-        parseMode: "Markdown",
-        replyMarkup: {
-          inline_keyboard: [
-            [
-              {
-                text: `✋ ቤቱ ${
-                  listing.available_for === "Rent" ? "ተከራይቷል" : "ተሽጧል"
-                }`,
-                callback_data: JSON.stringify({
-                  event: EVENT_CLOSE_JOB,
-                  id: listing.id
-                })
-              }
-            ]
+    await this.telegramService.sendListing(context.telegramUserId, listing, {
+      multiImageFollowupMessage: `ቤቱ ${
+        listing.available_for === "Rent" ? "ሲከራይ" : "ሲሸጥ"
+      } ይህንን በተን መጫን አይርሱ፡፡`,
+      replyMarkup: {
+        inline_keyboard: [
+          [
+            {
+              text: `✋ ቤቱ ${
+                listing.available_for === "Rent" ? "ተከራይቷል" : "ተሽጧል"
+              }`,
+              callback_data: JSON.stringify({
+                event: EVENT_CLOSE_JOB,
+                id: listing.id
+              })
+            }
           ]
-        }
+        ]
       }
-    );
+    });
   };
 
   private getPersistedMachineState = async (

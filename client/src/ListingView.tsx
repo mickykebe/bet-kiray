@@ -123,7 +123,7 @@ export default function ListingView({ listing }: Props) {
           </Typography>
         )}
         <div className={classes.listingPhotos}>
-          {listing.photos.map((photo, index) => {
+          {(listing.photos || []).map((photo, index) => {
             return (
               <CardMedia
                 className={classes.listingPhoto}

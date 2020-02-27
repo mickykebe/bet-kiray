@@ -1,18 +1,36 @@
+import { Express, Request, Response } from "express";
 import { TelegramBot } from "./TelegramBot";
-import { Message as TelegramMessage, CallbackQuery } from "../types/telegram";
+import {
+  Update as TelegramUpdate,
+  Message as TelegramMessage,
+  CallbackQuery
+} from "../types/telegram";
 import { TelegramBotMachine, EVENT_CLOSE_JOB } from "./TelegramBotMachine";
 import { logger } from "../utils/logger";
 import { getUserByTelegramId, closeListing } from "../db";
 
 export class BotController {
-  private botMachine: TelegramBotMachine;
-  constructor(private bot: TelegramBot) {
-    this.botMachine = new TelegramBotMachine(bot);
-    bot.on("message", (message: TelegramMessage) => {
-      this.botMachine.run(message);
-    });
-    bot.on("callback_query", this.cbQueryHandler);
+  constructor(
+    private bot: TelegramBot,
+    private botMachine: TelegramBotMachine,
+    private app: Express
+  ) {}
+
+  async setup(appRootUrl: string, endpointPath: string): Promise<void> {
+    this.app.post(endpointPath, this.updateHandler);
+    await this.bot.setupWebhook(appRootUrl, endpointPath);
   }
+
+  private updateHandler = (req: Request, res: Response) => {
+    const update: TelegramUpdate = req.body;
+    if (update.message) {
+      this.botMachine.run(update.message);
+    }
+    if (update.callback_query) {
+      this.cbQueryHandler(update.callback_query);
+    }
+    res.sendStatus(200);
+  };
 
   cbQueryHandler = async (callbackQuery: CallbackQuery) => {
     const telegramUser = callbackQuery.from;

@@ -79,3 +79,13 @@ if (!JWT_SECRET) {
   logger.error("No jwt secret. Set JWT_SECRET environment variable");
   process.exit(1);
 }
+
+export const TELEGRAM_CHANNEL_USERNAME =
+  process.env.TELEGRAM_CHANNEL_USERNAME || "";
+
+if (!TELEGRAM_CHANNEL_USERNAME) {
+  logger.error(
+    "No telegram channel user name. Set TELEGRAM_CHANNEL_USERNAME environment variable"
+  );
+  process.exit(1);
+}

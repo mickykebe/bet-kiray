@@ -4,7 +4,7 @@ export interface UnsuccessfulResponse {
   error_code: number;
 }
 
-type TelegramResult = File | boolean | Message;
+type TelegramResult = File | boolean | Message | Message[];
 
 export interface SuccessfulResponse {
   ok: true;
@@ -132,4 +132,33 @@ export interface LoginUrl {
   forward_text?: string;
   bot_username?: string;
   request_write_access: boolean;
+}
+
+export interface InputMediaPhoto {
+  type: "photo";
+  media: string;
+  caption?: string;
+  parse_mode?: "Markdown" | "HTML";
+}
+
+export interface InputMediaVideo {
+  type: "video";
+  media: string;
+  thumb?: string;
+  caption?: string;
+  parse_mode?: string;
+  width?: number;
+  height?: number;
+  duration?: number;
+  supports_streaming?: boolean;
+}
+
+export interface ReplyKeyboardRemove {
+  remove_keyboard: true;
+  selective?: boolean;
+}
+
+export interface ForceReply {
+  force_reply: true;
+  selective?: boolean;
 }

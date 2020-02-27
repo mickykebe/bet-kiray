@@ -68,7 +68,7 @@ export default function ListingCard({
   return (
     <CardActionArea className={className} onClick={onClick}>
       <div className={classes.container}>
-        {houseListing.photos.length > 0 && (
+        {houseListing.photos && houseListing.photos.length > 0 && (
           <CardMedia
             className={classes.cover}
             image={houseListing.photos[0]}
