@@ -113,6 +113,8 @@ interface StateSchema {
         waitingRooms: {};
         promptBathrooms: {};
         waitingBathrooms: {};
+        promptLocation: {};
+        waitingLocation: {};
         promptTitle: {};
         waitingTitle: {};
         promptDescription: {};
@@ -149,6 +151,7 @@ interface ListingValues {
   houseType?: string;
   rooms?: number;
   bathrooms?: number;
+  location?: string;
   title?: string;
   description?: string;
   price?: string;
@@ -296,16 +299,42 @@ export class TelegramBotMachine {
                   RECEIVED_MESSAGE: [
                     {
                       cond: "isEventSkip",
-                      target: "promptTitle"
+                      target: "promptLocation"
                     },
                     {
                       cond: "isEventBack",
                       target: "promptRooms"
                     },
                     {
-                      target: "promptTitle",
+                      target: "promptLocation",
                       actions: ["saveBathrooms"],
                       cond: { type: "bathroomsValid" }
+                    }
+                  ]
+                }
+              },
+              promptLocation: {
+                invoke: {
+                  id: "promptLocation",
+                  src: "promptLocation",
+                  onDone: "waitingLocation"
+                }
+              },
+              waitingLocation: {
+                entry: ["resetLocation"],
+                on: {
+                  RECEIVED_MESSAGE: [
+                    {
+                      cond: "isEventSkip",
+                      target: "promptTitle"
+                    },
+                    {
+                      cond: "isEventBack",
+                      target: "promptBathrooms"
+                    },
+                    {
+                      target: "promptTitle",
+                      actions: ["saveLocation"]
                     }
                   ]
                 }
@@ -323,7 +352,7 @@ export class TelegramBotMachine {
                   RECEIVED_MESSAGE: [
                     {
                       cond: "isEventBack",
-                      target: "promptBathrooms"
+                      target: "promptLocation"
                     },
                     {
                       target: "promptDescription",
@@ -545,6 +574,11 @@ export class TelegramBotMachine {
           saveBathrooms: saveListingValue<number>("bathrooms", message =>
             parseInt(message.text as string)
           ),
+          resetLocation: resetListingValue("location"),
+          saveLocation: saveListingValue<string>(
+            "location",
+            message => message.text as string
+          ),
           resetTitle: resetListingValue("title"),
           saveTitle: saveListingValue<string>(
             "title",
@@ -584,6 +618,7 @@ export class TelegramBotMachine {
           promptHouseType: this.promptHouseType,
           promptRooms: this.promptRooms,
           promptBathrooms: this.promptBathrooms,
+          promptLocation: this.promptLocation,
           promptTitle: this.promptTitle,
           promptDescription: this.promptDescription,
           promptPrice: this.promptPrice,
@@ -726,6 +761,22 @@ export class TelegramBotMachine {
     );
   };
 
+  private promptLocation = async (context: Context) => {
+    await this.telegramBot.sendMessage(
+      context.telegramUserId,
+      "ቤቱ የት ሰፈር ነው?",
+      {
+        replyMarkup: {
+          keyboard: [
+            [{ text: MESSAGE_BACK }, { text: MESSAGE_SKIP }],
+            [{ text: MESSAGE_BACK_TO_MAIN_MENU }]
+          ],
+          resize_keyboard: true
+        }
+      }
+    );
+  };
+
   private promptTitle = async (context: Context) => {
     await this.telegramBot.sendMessage(
       context.telegramUserId,
@@ -811,6 +862,7 @@ _(ፎቶ ከሌለህ ጨርሻለሁን ተጫን፡፡ )_`,
         price: listing.price,
         rooms: listing.rooms,
         bathrooms: listing.bathrooms,
+        location: listing.location,
         description: listing.description,
         photos: listing.photoFileIds || []
       },
@@ -841,6 +893,7 @@ _(ፎቶ ከሌለህ ጨርሻለሁን ተጫን፡፡ )_`,
           houseType: listingValues.houseType as string,
           rooms: listingValues.rooms,
           bathrooms: listingValues.bathrooms,
+          location: listingValues.location,
           description: listingValues.description,
           price: listingValues.price,
           photos: photoUrls
@@ -850,6 +903,7 @@ _(ፎቶ ከሌለህ ጨርሻለሁን ተጫን፡፡ )_`,
       return listing;
     } catch (err) {
       logger.error(err);
+      throw err;
     }
   };
 

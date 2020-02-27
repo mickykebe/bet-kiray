@@ -17,8 +17,12 @@ CREATE TABLE house_listing (
   bathrooms INTEGER CHECK (bathrooms > 0),
   price TEXT,
   owner INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  location TEXT,
   approval_status TEXT NOT NULL CONSTRAINT approval_values CHECK (approval_status IN ('Pending', 'Active', 'Declined', 'Closed')) DEFAULT 'Pending',
-  created TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  apply_via_telegram boolean DEFAULT FALSE,
+  apply_phone_number TEXT,
+  created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT require_application_method CHECK (apply_via_telegram IS NOT FALSE OR apply_phone_number IS NOT NULL)
 );
 
 CREATE TABLE listing_photo(

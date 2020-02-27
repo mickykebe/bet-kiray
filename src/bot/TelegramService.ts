@@ -16,6 +16,7 @@ export class TelegramService {
     price?: string;
     rooms?: number;
     bathrooms?: number;
+    location?: string;
     description?: string;
   }): string => {
     return `*📝 Title:* \`\`\` ${listing.title} \`\`\`
@@ -23,6 +24,10 @@ export class TelegramService {
 *🤝 Available For:* \`${listing.available_for}\`
     
 *🏘️ House Type:* \`${listing.house_type}\`${
+      !!listing.location
+        ? `\n\n*📍 Location:* \`\`\` ${listing.location} \`\`\``
+        : ""
+    }${
       !!listing.price ? `\n\n*💲 Price:* \`\`\` ${listing.price} \`\`\`` : ""
     }${!!listing.rooms ? `\n\n*🚪 Rooms:* \`\`\`${listing.rooms}\`\`\`` : ""}${
       !!listing.bathrooms
@@ -44,6 +49,7 @@ export class TelegramService {
       price?: string;
       rooms?: number;
       bathrooms?: number;
+      location?: string;
       description?: string;
       photos?: string[];
     },

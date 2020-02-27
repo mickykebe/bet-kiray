@@ -24,6 +24,7 @@ export interface HouseListing {
   description?: string;
   rooms?: number;
   bathrooms?: number;
+  location?: string;
   price?: string;
   owner: number;
   approval_status: string;
@@ -43,6 +44,7 @@ interface ListingInput {
   houseType: string;
   rooms?: number;
   bathrooms?: number;
+  location?: string;
   description?: string;
   price?: string;
   photos?: string[];
@@ -56,6 +58,7 @@ const houseListingColumns = [
   "description",
   "rooms",
   "bathrooms",
+  "location",
   "price",
   "owner",
   "approval_status",
@@ -76,6 +79,7 @@ export async function createListing(values: ListingInput, userId: number) {
         description: values.description,
         rooms: values.rooms,
         bathrooms: values.bathrooms,
+        location: values.location,
         price: values.price,
         owner: userId
       })
