@@ -2,7 +2,14 @@ import { Machine, State, StateMachine, interpret, assign } from "xstate";
 import { TelegramBot } from "./TelegramBot";
 import Yup from "yup";
 import { Message as TelegramMessage } from "../types/telegram";
-import { HouseListing, createListing, findOrCreateTelegramUser } from "../db";
+import {
+  HouseListing,
+  createListing,
+  findOrCreateTelegramUser,
+  getUserByTelegramId,
+  getUserById,
+  User
+} from "../db";
 import { redis } from "../redis";
 import { HouseType, HouseAvailableFor } from "../utils/values";
 import * as validators from "../utils/validation";
@@ -20,6 +27,9 @@ const MESSAGE_DONE = "✅ ጨርሻለሁ";
 const MESSAGE_RETRY = "🔄 ደግመህ ሞክር";
 const MESSAGE_DROP_LISTING_PHOTOS = "🗑️ እስካሁን የላኳቸውን ፎቶዎች አጥፋ";
 const MESSAGE_POST_HOUSE = "🏠 የቤት ማስታወቅያ ፍጠር";
+const MESSAGE_APPLY_VIA_PHONE = "📞 በስልክ";
+const MESSAGE_APPLY_VIA_TELEGRAM = "💬 በቴሌግራም";
+const MESSAGE_USE_MY_PHONE = "📱 የኔን ስልክ ተጠቀም";
 
 enum MESSAGES_AVAILABLE_FOR {
   Sale = "💰 ሽያጭ",
@@ -130,6 +140,10 @@ interface StateSchema {
         sendSuccessSaving: {};
         sendError: {};
         waitingErrorReply: {};
+        promptApplyMethod: {};
+        waitingApplyMethod: {};
+        promptPhone: {};
+        waitingPhone: {};
       };
     };
   };
@@ -156,6 +170,8 @@ interface ListingValues {
   description?: string;
   price?: string;
   photoFileIds?: string[];
+  applyViaTelegram?: boolean;
+  applyPhoneNumber?: string;
 }
 
 interface Context {
@@ -432,7 +448,7 @@ export class TelegramBotMachine {
                     },
                     {
                       cond: "isEventDone",
-                      target: "previewPost"
+                      target: "promptApplyMethod"
                     },
                     {
                       cond: "isEventDropPhotos",
@@ -456,6 +472,58 @@ export class TelegramBotMachine {
                   }
                 }
               },
+              promptApplyMethod: {
+                invoke: {
+                  id: "promptApplyMethod",
+                  src: "promptApplyMethod",
+                  onDone: {
+                    target: "waitingApplyMethod"
+                  }
+                }
+              },
+              waitingApplyMethod: {
+                entry: ["resetApplyViaTelegram", "resetApplyPhone"],
+                on: {
+                  RECEIVED_MESSAGE: [
+                    {
+                      cond: "isEventBack",
+                      target: "promptPhotos"
+                    },
+                    {
+                      cond: "isEventApplyViaPhone",
+                      target: "promptPhone"
+                    },
+                    {
+                      cond: "isEventApplyViaTelegram",
+                      actions: ["activateTelegramApply"],
+                      target: "previewPost"
+                    }
+                  ]
+                }
+              },
+              promptPhone: {
+                invoke: {
+                  id: "promptPhone",
+                  src: "promptPhone",
+                  onDone: {
+                    target: "waitingPhone"
+                  }
+                }
+              },
+              waitingPhone: {
+                on: {
+                  RECEIVED_MESSAGE: [
+                    {
+                      cond: "isEventBack",
+                      target: "promptApplyMethod"
+                    },
+                    {
+                      actions: ["savePhoneNumber"],
+                      target: "previewPost"
+                    }
+                  ]
+                }
+              },
               previewPost: {
                 invoke: {
                   id: "previewPost",
@@ -470,7 +538,7 @@ export class TelegramBotMachine {
                   RECEIVED_MESSAGE: [
                     {
                       cond: "isEventBack",
-                      target: "promptPhotos"
+                      target: "promptApplyMethod"
                     },
                     {
                       cond: "isEventDone",
@@ -539,6 +607,12 @@ export class TelegramBotMachine {
           isEventDropPhotos: messageGuard(
             message => message.text === MESSAGE_DROP_LISTING_PHOTOS
           ),
+          isEventApplyViaPhone: messageGuard(
+            message => message.text === MESSAGE_APPLY_VIA_PHONE
+          ),
+          isEventApplyViaTelegram: messageGuard(
+            message => message.text === MESSAGE_APPLY_VIA_TELEGRAM
+          ),
           availabilityValid: yupEventValidator(
             validators.houseAvailabilityValidator,
             (text: string) => AVAILABLE_FOR_MAP[text as MESSAGES_AVAILABLE_FOR]
@@ -605,6 +679,18 @@ export class TelegramBotMachine {
               return fileIds.slice(-MAX_PHOTOS);
             }
           ),
+          activateTelegramApply: saveListingValue<boolean>(
+            "applyViaTelegram",
+            () => true
+          ),
+          resetApplyViaTelegram: resetListingValue("applyViaTelegram"),
+          resetApplyPhone: resetListingValue("applyPhoneNumber"),
+          savePhoneNumber: saveListingValue<string>(
+            "applyPhoneNumber",
+            message => {
+              return (message?.contact?.phone_number || message.text) as string;
+            }
+          ),
           clearListingValues: assign<Context>({
             listingValues: {}
           }),
@@ -624,6 +710,8 @@ export class TelegramBotMachine {
           promptPrice: this.promptPrice,
           promptPhotos: this.promptPhotos,
           sendPhotoDropMessage: this.sendPhotoDropMessage,
+          promptApplyMethod: this.promptApplyMethod,
+          promptPhone: this.promptPhone,
           previewPost: this.previewPost,
           saveListing: this.saveListing,
           sendError: this.sendError,
@@ -851,8 +939,46 @@ _(ፎቶ ከሌለህ ጨርሻለሁን ተጫን፡፡ )_`,
     );
   };
 
+  private promptApplyMethod = async (context: Context) => {
+    await this.telegramBot.sendMessage(
+      context.telegramUserId,
+      `${
+        context.listingValues.availability === "Rent" ? "ተከራይ" : "ገዥ"
+      } እንዴት እንዲያገኝህ ትፈልጋለህ?`,
+      {
+        replyMarkup: {
+          keyboard: [
+            [
+              { text: MESSAGE_APPLY_VIA_PHONE },
+              { text: MESSAGE_APPLY_VIA_TELEGRAM }
+            ],
+            [{ text: MESSAGE_BACK }],
+            [{ text: MESSAGE_BACK_TO_MAIN_MENU }]
+          ],
+          resize_keyboard: true
+        }
+      }
+    );
+  };
+
+  private promptPhone = async (context: Context) => {
+    await this.telegramBot.sendMessage(context.telegramUserId, `ስልክ ቁጥር አስገባ`, {
+      replyMarkup: {
+        keyboard: [
+          [{ text: MESSAGE_USE_MY_PHONE, request_contact: true }],
+          [{ text: MESSAGE_BACK }],
+          [{ text: MESSAGE_BACK_TO_MAIN_MENU }]
+        ]
+      }
+    });
+  };
+
   private previewPost = async (context: Context) => {
     const listing = context.listingValues;
+    let owner: User | undefined;
+    if (listing.applyViaTelegram) {
+      owner = await getUserById(context.userId);
+    }
     return this.telegramService.sendListing(
       context.telegramUserId,
       {
@@ -863,10 +989,13 @@ _(ፎቶ ከሌለህ ጨርሻለሁን ተጫን፡፡ )_`,
         rooms: listing.rooms,
         bathrooms: listing.bathrooms,
         location: listing.location,
+        apply_phone_number: listing.applyPhoneNumber,
+        apply_via_telegram: listing.applyViaTelegram,
         description: listing.description,
         photos: listing.photoFileIds || []
       },
       {
+        owner,
         replyMarkup: {
           keyboard: [
             [{ text: MESSAGE_BACK }, { text: MESSAGE_DONE }],
@@ -896,7 +1025,9 @@ _(ፎቶ ከሌለህ ጨርሻለሁን ተጫን፡፡ )_`,
           location: listingValues.location,
           description: listingValues.description,
           price: listingValues.price,
-          photos: photoUrls
+          photos: photoUrls,
+          applyPhoneNumber: listingValues.applyPhoneNumber,
+          applyViaTelegram: listingValues.applyViaTelegram
         },
         userId
       );
@@ -942,6 +1073,10 @@ _(ፎቶ ከሌለህ ጨርሻለሁን ተጫን፡፡ )_`,
 
   private sendSuccessSaving = async (context: Context) => {
     const listing = context.listing as HouseListing;
+    let owner: User | undefined;
+    if (listing.apply_via_telegram) {
+      owner = await getUserById(context.userId);
+    }
     await this.telegramBot.sendMessage(
       context.telegramUserId,
       `🎉🎉🎉የቤቱ ምዝገባ ተሳክቷል🎉🎉🎉
@@ -952,6 +1087,7 @@ _(ፎቶ ከሌለህ ጨርሻለሁን ተጫን፡፡ )_`,
       multiImageFollowupMessage: `ቤቱ ${
         listing.available_for === "Rent" ? "ሲከራይ" : "ሲሸጥ"
       } ይህንን በተን መጫን አይርሱ፡፡`,
+      owner,
       replyMarkup: {
         inline_keyboard: [
           [

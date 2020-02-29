@@ -16,12 +16,18 @@ export async function pendingListings(
   });
 }
 
-async function postListingToTelegram(listing: db.HouseListing) {
+async function postListingToTelegram(
+  listing: db.HouseListing,
+  owner?: db.User
+) {
   const telegramBot = new TelegramBot(TELEGRAM_BOT_TOKEN);
   const telegramService = new TelegramService(telegramBot);
   const sentMessage = await telegramService.sendListing(
     `@${TELEGRAM_CHANNEL_USERNAME}`,
-    listing
+    listing,
+    {
+      owner
+    }
   );
   await db.createSocialPost(listing.id, sentMessage.message_id);
 }
@@ -38,8 +44,8 @@ export async function approveListing(
       success: true
     });
     const listing = (await db.getListingById(parseInt(id))) as db.HouseListing;
-    await postListingToTelegram(listing);
-    const owner = db.getUserById(listing.owner);
+    const owner = await db.getUserById(listing.owner);
+    await postListingToTelegram(listing, owner);
     /* if(owner) {
       await 
     } */

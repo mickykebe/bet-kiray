@@ -65,6 +65,15 @@ export interface Message {
   video?: any;
   voice?: any;
   video_note?: any;
+  contact?: Contact;
+}
+
+export interface Contact {
+  phone_number: string;
+  first_name: string;
+  last_name?: string;
+  user_id?: number;
+  vcard?: string;
 }
 
 export interface PhotoSize {

@@ -7,7 +7,7 @@ const knex = Knex({
   connection: DATABASE_URL
 });
 
-interface User {
+export interface User {
   id: number;
   telegram_id: number;
   telegram_user_name?: string;
@@ -29,6 +29,8 @@ export interface HouseListing {
   owner: number;
   approval_status: string;
   created: Date;
+  apply_via_telegram?: boolean;
+  apply_phone_number?: string;
   photos?: string[];
 }
 
@@ -48,6 +50,8 @@ interface ListingInput {
   description?: string;
   price?: string;
   photos?: string[];
+  applyViaTelegram?: boolean;
+  applyPhoneNumber?: string;
 }
 
 const houseListingColumns = [
@@ -62,7 +66,9 @@ const houseListingColumns = [
   "price",
   "owner",
   "approval_status",
-  "created"
+  "created",
+  "apply_via_telegram",
+  "apply_phone_number"
 ];
 
 function selectColumns(tableName: string, columns: string[]) {
@@ -81,7 +87,9 @@ export async function createListing(values: ListingInput, userId: number) {
         bathrooms: values.bathrooms,
         location: values.location,
         price: values.price,
-        owner: userId
+        owner: userId,
+        apply_phone_number: values.applyPhoneNumber,
+        apply_via_telegram: values.applyViaTelegram
       })
       .returning("*");
 

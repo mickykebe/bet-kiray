@@ -5,37 +5,54 @@ import {
   Message as TelegramMessage,
   InputMediaPhoto
 } from "../types/telegram";
+import { User } from "../db";
 
 export class TelegramService {
   constructor(private telegramBot: TelegramBot) {}
 
-  private listingMessage = (listing: {
-    title: string;
-    available_for: string;
-    house_type: string;
-    price?: string;
-    rooms?: number;
-    bathrooms?: number;
-    location?: string;
-    description?: string;
-  }): string => {
-    return `*📝 Title:* \`\`\` ${listing.title} \`\`\`
+  private listingMessage = (
+    listing: {
+      title: string;
+      available_for: string;
+      house_type: string;
+      price?: string;
+      rooms?: number;
+      bathrooms?: number;
+      location?: string;
+      description?: string;
+      telegram_user_id?: number;
+      apply_phone_number?: string;
+      apply_via_telegram?: boolean;
+    },
+    owner?: User
+  ): string => {
+    return `*📝 መግለጫ:* \`\`\` ${listing.title} \`\`\`
 
-*🤝 Available For:* \`${listing.available_for}\`
+*🤝 ቤቱ የቀረበው:* \`${listing.available_for}\`
     
-*🏘️ House Type:* \`${listing.house_type}\`${
-      !!listing.location
-        ? `\n\n*📍 Location:* \`\`\` ${listing.location} \`\`\``
-        : ""
+*🏘️ የቤቱ አይነት:* \`${listing.house_type}\`${
+      !!listing.location ? `\n\n*📍 ቦታ:* \`\`\` ${listing.location} \`\`\`` : ""
+    }${!!listing.price ? `\n\n*💲 ዋጋ:* \`\`\` ${listing.price} \`\`\`` : ""}${
+      !!listing.rooms ? `\n\n*🚪 ክፍሎች:* \`\`\`${listing.rooms}\`\`\`` : ""
     }${
-      !!listing.price ? `\n\n*💲 Price:* \`\`\` ${listing.price} \`\`\`` : ""
-    }${!!listing.rooms ? `\n\n*🚪 Rooms:* \`\`\`${listing.rooms}\`\`\`` : ""}${
       !!listing.bathrooms
-        ? `\n\n*🛁 Bathrooms:* \`\`\`${listing.bathrooms}\`\`\``
+        ? `\n\n*🛁 ሽንትቤቶች:* \`\`\`${listing.bathrooms}\`\`\``
         : ""
     }${
       !!listing.description
-        ? `\n\n*📜 Description:* \`\`\` ${listing.description} \`\`\``
+        ? `\n\n*📜 ዝርዝር መግለጫ:* \`\`\`${listing.description}\`\`\``
+        : ""
+    }${
+      listing.apply_via_telegram && owner
+        ? `\n\n*💬 ስለ ቤቱ ለመነጋገር፡* [${owner.first_name ||
+            (owner.telegram_user_name
+              ? `@${owner.telegram_user_name}`
+              : null) ||
+            "User"}](tg://user?id=${listing.telegram_user_id})`
+        : ""
+    }${
+      !!listing.apply_phone_number
+        ? `\n\n*📱 ስለ ቤቱ ለመነጋገር፡* \`\`\`${listing.apply_phone_number}\`\`\``
         : ""
     }`;
   };
@@ -52,16 +69,20 @@ export class TelegramService {
       location?: string;
       description?: string;
       photos?: string[];
+      apply_phone_number?: string;
+      apply_via_telegram?: boolean;
     },
     {
+      owner,
       multiImageFollowupMessage = "ይህንን ይመስላል",
       replyMarkup
     }: {
       replyMarkup?: ReplyKeyboardMarkup | InlineKeyboardMarkup;
       multiImageFollowupMessage?: string;
+      owner?: User;
     } = {}
   ): Promise<TelegramMessage> => {
-    const message = this.listingMessage(listing);
+    const message = this.listingMessage(listing, owner);
     if (listing.photos && listing.photos.length === 1) {
       return this.telegramBot.sendPhoto(chatId, listing.photos[0], {
         caption: message,

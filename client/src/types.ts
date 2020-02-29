@@ -16,8 +16,11 @@ export interface HouseListing {
   rooms?: number;
   bathrooms?: number;
   price?: string;
+  location?: string;
   owner: number;
   approval_status: string;
   created: Date;
   photos?: string[];
+  apply_via_telegram?: boolean;
+  apply_phone_number?: string;
 }

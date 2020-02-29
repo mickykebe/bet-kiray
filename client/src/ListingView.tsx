@@ -15,6 +15,7 @@ import BathtubIcon from "@material-ui/icons/Bathtub";
 import MeetingRoomIcon from "@material-ui/icons/MeetingRoom";
 import TransferWithinAStationIcon from "@material-ui/icons/TransferWithinAStation";
 import BusinessIcon from "@material-ui/icons/Business";
+import LocationOnIcon from "@material-ui/icons/LocationOn";
 
 const useStyles = makeStyles(theme => {
   return {
@@ -25,13 +26,23 @@ const useStyles = makeStyles(theme => {
     toolbar: {
       boxShadow: theme.shadows[0]
     },
+    titleContainer: {
+      display: "flex",
+      flexDirection: "column"
+    },
     title: {
       fontWeight: 800
+    },
+    location: {
+      display: "inline-flex",
+      alignItems: "center",
+      marginLeft: theme.spacing(-0.25)
     },
     flexGrow: {
       flex: 1
     },
     listingBody: {
+      paddingTop: theme.spacing(2),
       paddingBottom: theme.spacing(2),
       paddingLeft: theme.spacing(3),
       paddingRight: theme.spacing(3)
@@ -72,9 +83,20 @@ export default function ListingView({ listing }: Props) {
     <div className={classes.root}>
       <AppBar position="static" className={classes.toolbar}>
         <Toolbar>
-          <Typography variant="h6" className={classes.title}>
-            {listing.title}
-          </Typography>
+          <div className={classes.titleContainer}>
+            <Typography variant="h6" className={classes.title}>
+              {listing.title}
+            </Typography>
+            {listing.location && (
+              <Typography
+                variant="subtitle2"
+                color="textSecondary"
+                className={classes.location}>
+                <LocationOnIcon fontSize="small" /> {listing.location}
+              </Typography>
+            )}
+          </div>
+
           <div className={classes.flexGrow} />
           <IconButton>
             <DoneOutlineIcon fontSize="small" />

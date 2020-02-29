@@ -28,8 +28,8 @@ const useStyles = makeStyles(theme => {
       alignItems: "stretch"
     },
     cover: {
-      width: 130,
-      height: 130
+      width: 75,
+      height: 75
     },
     title: {
       marginBottom: theme.spacing(2),
@@ -76,7 +76,7 @@ export default function ListingCard({
           />
         )}
         <div className={classes.details}>
-          <Typography variant="h6" className={classes.title}>
+          <Typography variant="subtitle1" className={classes.title}>
             {houseListing.title}
           </Typography>
           <div className={classes.infoItems}>
