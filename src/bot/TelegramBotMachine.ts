@@ -1072,38 +1072,12 @@ _(ፎቶ ከሌለህ ጨርሻለሁን ተጫን፡፡ )_`,
   };
 
   private sendSuccessSaving = async (context: Context) => {
-    const listing = context.listing as HouseListing;
-    let owner: User | undefined;
-    if (listing.apply_via_telegram) {
-      owner = await getUserById(context.userId);
-    }
     await this.telegramBot.sendMessage(
       context.telegramUserId,
       `🎉🎉🎉የቤቱ ምዝገባ ተሳክቷል🎉🎉🎉
 
 የተመዘገበውን ገምግመን ስንፈቅድ ቤቱ በቻናላችን ላይ ይለቀቃል፡፡`
     );
-    await this.telegramService.sendListing(context.telegramUserId, listing, {
-      multiImageFollowupMessage: `ቤቱ ${
-        listing.available_for === "Rent" ? "ሲከራይ" : "ሲሸጥ"
-      } ይህንን በተን መጫን አይርሱ፡፡`,
-      owner,
-      replyMarkup: {
-        inline_keyboard: [
-          [
-            {
-              text: `✋ ቤቱ ${
-                listing.available_for === "Rent" ? "ተከራይቷል" : "ተሽጧል"
-              }`,
-              callback_data: JSON.stringify({
-                event: EVENT_CLOSE_JOB,
-                id: listing.id
-              })
-            }
-          ]
-        ]
-      }
-    });
   };
 
   private getPersistedMachineState = async (

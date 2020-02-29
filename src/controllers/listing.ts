@@ -16,10 +16,7 @@ export async function pendingListings(
   });
 }
 
-async function postListingToTelegram(
-  listing: db.HouseListing,
-  owner?: db.User
-) {
+async function postListingToTelegram(listing: db.HouseListing, owner: db.User) {
   const telegramBot = new TelegramBot(TELEGRAM_BOT_TOKEN);
   const telegramService = new TelegramService(telegramBot);
   const sentMessage = await telegramService.sendListing(
@@ -30,6 +27,12 @@ async function postListingToTelegram(
     }
   );
   await db.createSocialPost(listing.id, sentMessage.message_id);
+  await telegramBot.sendMessage(
+    owner.telegram_id,
+    `🙌🙌🙌 ቤቱ ተፈቅዷል 🙌🙌🙌.
+    ቴሌግራም ቻናላችን ላይ ሼር ተደርጓል`
+  );
+  await telegramService.sendSuccessSaving(owner.telegram_id, listing, owner);
 }
 
 export async function approveListing(
@@ -45,9 +48,12 @@ export async function approveListing(
     });
     const listing = (await db.getListingById(parseInt(id))) as db.HouseListing;
     const owner = await db.getUserById(listing.owner);
+    if (!owner) {
+      throw new Error(
+        "Failed to retrieve listing owner when approving listing"
+      );
+    }
     await postListingToTelegram(listing, owner);
-    /* if(owner) {
-      await 
-    } */
   }
+  res.sendStatus(404);
 }

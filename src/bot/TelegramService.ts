@@ -5,7 +5,22 @@ import {
   Message as TelegramMessage,
   InputMediaPhoto
 } from "../types/telegram";
-import { User } from "../db";
+import { User, HouseListing } from "../db";
+import { EVENT_CLOSE_JOB } from "./TelegramBotMachine";
+
+interface ListingData {
+  title: string;
+  available_for: string;
+  house_type: string;
+  price?: string;
+  rooms?: number;
+  bathrooms?: number;
+  location?: string;
+  description?: string;
+  photos?: string[];
+  apply_phone_number?: string;
+  apply_via_telegram?: boolean;
+}
 
 export class TelegramService {
   constructor(private telegramBot: TelegramBot) {}
@@ -59,19 +74,7 @@ export class TelegramService {
 
   public sendListing = async (
     chatId: number | string,
-    listing: {
-      title: string;
-      available_for: string;
-      house_type: string;
-      price?: string;
-      rooms?: number;
-      bathrooms?: number;
-      location?: string;
-      description?: string;
-      photos?: string[];
-      apply_phone_number?: string;
-      apply_via_telegram?: boolean;
-    },
+    listing: ListingData,
     {
       owner,
       multiImageFollowupMessage = "ይህንን ይመስላል",
@@ -113,6 +116,34 @@ export class TelegramService {
     return this.telegramBot.sendMessage(chatId, message, {
       parseMode: "Markdown",
       replyMarkup
+    });
+  };
+
+  sendSuccessSaving = (
+    chatId: number | string,
+    listing: HouseListing,
+    owner?: User
+  ) => {
+    return this.sendListing(chatId, listing, {
+      multiImageFollowupMessage: `ቤቱ ${
+        listing.available_for === "Rent" ? "ሲከራይ" : "ሲሸጥ"
+      } ይህንን በተን መጫን አይርሱ፡፡`,
+      owner,
+      replyMarkup: {
+        inline_keyboard: [
+          [
+            {
+              text: `✋ ቤቱ ${
+                listing.available_for === "Rent" ? "ተከራይቷል" : "ተሽጧል"
+              }`,
+              callback_data: JSON.stringify({
+                event: EVENT_CLOSE_JOB,
+                id: listing.id
+              })
+            }
+          ]
+        ]
+      }
     });
   };
 }
