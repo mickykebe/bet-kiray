@@ -30,7 +30,8 @@ async function postListingToTelegram(listing: db.HouseListing, owner: db.User) {
   await telegramBot.sendMessage(
     owner.telegram_id,
     `🙌🙌🙌 ቤቱ ተፈቅዷል 🙌🙌🙌.
-    ቴሌግራም ቻናላችን ላይ ሼር ተደርጓል`
+
+ቴሌግራም ቻናላችን ላይ ሼር ተደርጓል`
   );
   await telegramService.sendSuccessSaving(owner.telegram_id, listing, owner);
 }
@@ -54,6 +55,7 @@ export async function approveListing(
       );
     }
     await postListingToTelegram(listing, owner);
+    return;
   }
   res.sendStatus(404);
 }

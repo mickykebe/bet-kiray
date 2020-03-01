@@ -53,7 +53,8 @@ const useStyles = makeStyles(theme => {
       width: 2,
       position: "absolute",
       top: 0,
-      bottom: 0
+      bottom: 0,
+      right: 0
     }
   };
 });

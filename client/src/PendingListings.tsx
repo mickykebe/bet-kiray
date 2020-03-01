@@ -5,6 +5,7 @@ import { api } from "./api";
 import { HouseListing } from "./types";
 import { makeStyles, Typography } from "@material-ui/core";
 import ListingCard from "./ListingCard";
+// @ts-ignore
 import { useQuery } from "react-query";
 import LoadingBackdrop from "./LoadingBackdrop";
 import ListingView from "./ListingView";
@@ -42,7 +43,13 @@ export default function PendingListings() {
   const user = useContext(UserContext);
   const classes = useStyles();
   const [selectedListingId, setSelectedListingId] = useState<number>(-1);
-  const { data, isLoading } = useQuery<PendingListingsResult, any>(
+  const {
+    data,
+    isLoading
+  }: {
+    data: { listings: HouseListing[] } | undefined;
+    isLoading: boolean;
+  } = useQuery<PendingListingsResult, any>(
     "pendingListings",
     (): Promise<PendingListingsResult> => {
       return api("/api/pending-listings", {

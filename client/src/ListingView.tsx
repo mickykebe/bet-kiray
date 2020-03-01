@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { HouseListing } from "./types";
 import {
   makeStyles,
@@ -6,7 +6,8 @@ import {
   Toolbar,
   IconButton,
   CardMedia,
-  Typography
+  Typography,
+  Snackbar
 } from "@material-ui/core";
 import DoneOutlineIcon from "@material-ui/icons/DoneOutline";
 import CloseIcon from "@material-ui/icons/Close";
@@ -16,6 +17,10 @@ import MeetingRoomIcon from "@material-ui/icons/MeetingRoom";
 import TransferWithinAStationIcon from "@material-ui/icons/TransferWithinAStation";
 import BusinessIcon from "@material-ui/icons/Business";
 import LocationOnIcon from "@material-ui/icons/LocationOn";
+import { api } from "./api";
+// @ts-ignore
+import { useMutation, queryCache } from "react-query";
+import MuiAlert from "@material-ui/lab/Alert";
 
 const useStyles = makeStyles(theme => {
   return {
@@ -77,8 +82,34 @@ interface Props {
   listing: HouseListing;
 }
 
+const approveListing = ({ id }: { id: number }) => {
+  return api(`/api/approve-listing/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
+};
+
 export default function ListingView({ listing }: Props) {
   const classes = useStyles();
+  const [showError, setShowError] = useState(false);
+  const [mutate, { status }] = useMutation(approveListing, {
+    onSuccess: () => {
+      queryCache.refetchQueries("pendingListings");
+    },
+    onError: () => {
+      setShowError(true);
+    }
+  });
+  const onApproveListing = async () => {
+    try {
+      await mutate({ id: listing.id });
+    } catch (err) {
+      setShowError(true);
+      console.log(err);
+    }
+  };
   return (
     <div className={classes.root}>
       <AppBar position="static" className={classes.toolbar}>
@@ -98,7 +129,9 @@ export default function ListingView({ listing }: Props) {
           </div>
 
           <div className={classes.flexGrow} />
-          <IconButton>
+          <IconButton
+            onClick={onApproveListing}
+            disabled={status === "loading"}>
             <DoneOutlineIcon fontSize="small" />
           </IconButton>
           <IconButton>
@@ -157,6 +190,14 @@ export default function ListingView({ listing }: Props) {
           })}
         </div>
       </div>
+      <Snackbar
+        open={showError}
+        autoHideDuration={6000}
+        onClose={() => setShowError(false)}>
+        <MuiAlert elevation={6} variant="filled" severity="error">
+          Problem occurred approving job
+        </MuiAlert>
+      </Snackbar>
     </div>
   );
 }

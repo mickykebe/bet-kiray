@@ -6,7 +6,7 @@
   "dependencies": {
     "@material-ui/core": "^4.9.3",
     "@material-ui/icons": "^4.9.1",
-    "@material-ui/lab": "^4.0.0-alpha.44",
+    "@material-ui/lab": "^4.0.0-alpha.45",
     "@testing-library/jest-dom": "^4.2.4",
     "@testing-library/react": "^9.3.2",
     "@testing-library/user-event": "^7.1.2",
@@ -18,7 +18,7 @@
     "clsx": "^1.1.0",
     "react": "^16.12.0",
     "react-dom": "^16.12.0",
-    "react-query": "^0.4.3",
+    "react-query": "^1.0.7",
     "react-router-dom": "^5.1.2",
     "react-scripts": "3.4.0",
     "react-telegram-login": "^1.0.4",

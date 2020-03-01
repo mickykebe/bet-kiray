@@ -1110,10 +1110,10 @@
   dependencies:
     "@babel/runtime" "^7.4.4"
 
-"@material-ui/lab@^4.0.0-alpha.44":
-  version "4.0.0-alpha.44"
-  resolved "https://registry.yarnpkg.com/@material-ui/lab/-/lab-4.0.0-alpha.44.tgz#041281a288f731594a46c1010477e82cad4925fd"
-  integrity sha512-reKjuN9E6bDe0FLqAdaki68sKa9Lbrz+P6S2ZBIs1CP9rVd48rL1VHOonllcSEuTd4vM+apJxW8LxINJ5WsaFg==
+"@material-ui/lab@^4.0.0-alpha.45":
+  version "4.0.0-alpha.45"
+  resolved "https://registry.yarnpkg.com/@material-ui/lab/-/lab-4.0.0-alpha.45.tgz#6e1abbdd6e44b9ef7b3eff8ef892a3da5dc52f10"
+  integrity sha512-zT6kUU87SHsPukiu3tlWg8V6o0tGS38c1b/xst/kPqX6eLbfqrROyxhHn1A8ZtHmqga1AKQdv/1llQoG80Afww==
   dependencies:
     "@babel/runtime" "^7.4.4"
     "@material-ui/utils" "^4.7.1"
@@ -1451,13 +1451,6 @@
   version "16.9.5"
   resolved "https://registry.yarnpkg.com/@types/react-dom/-/react-dom-16.9.5.tgz#5de610b04a35d07ffd8f44edad93a71032d9aaa7"
   integrity sha512-BX6RQ8s9D+2/gDhxrj8OW+YD4R+8hj7FEM/OJHGNR0KipE1h1mSsf39YeyC81qafkq+N3rU3h3RFbLSwE5VqUg==
-  dependencies:
-    "@types/react" "*"
-
-"@types/react-query@^0.3.7":
-  version "0.3.8"
-  resolved "https://registry.yarnpkg.com/@types/react-query/-/react-query-0.3.8.tgz#3be536ff02a94b4e7a387b8a6e2c94b69086ec9b"
-  integrity sha512-z5ZVbSeY6R1SzICbJPEeQNgEIdlJRwPIPANvaLKyDBZlxp419G+8uGuPlF748yBDp/X1GEog/fhpNsVKocBkhQ==
   dependencies:
     "@types/react" "*"
 
@@ -8544,12 +8537,10 @@ react-is@^16.6.0, react-is@^16.7.0, react-is@^16.8.0, react-is@^16.8.1, react-is
   resolved "https://registry.yarnpkg.com/react-is/-/react-is-16.12.0.tgz#2cc0fe0fba742d97fd527c42a13bec4eeb06241c"
   integrity sha512-rPCkf/mWBtKc97aLL9/txD8DZdemK0vkA3JMLShjlJB3Pj3s+lpf1KaBzMfQrAmhMQB0n1cU/SUGgKKBCe837Q==
 
-react-query@^0.4.3:
-  version "0.4.3"
-  resolved "https://registry.yarnpkg.com/react-query/-/react-query-0.4.3.tgz#ce6b90ee1677868c24bbf3050803c811f97e179c"
-  integrity sha512-EoKxO41V3s0yh1LqeA3o7IQ/nO7gbCeHM1yCeVNMjyQ5kfeV7n1FgxXbOLEV3VZLTIxvHML5/n06Q8dvpLIqFA==
-  dependencies:
-    "@types/react-query" "^0.3.7"
+react-query@^1.0.7:
+  version "1.0.7"
+  resolved "https://registry.yarnpkg.com/react-query/-/react-query-1.0.7.tgz#ce73afc125b8857a3b9c7b6cf554cae94311ed18"
+  integrity sha512-m0of9P+vJofHWt2DJSObFKssvsXICOQJOdcjySjrxAS8q6uIH1i8pwgiGIr339iESsEz75fcQH2HZil6yBWEgg==
 
 react-router-dom@^5.1.2:
   version "5.1.2"
