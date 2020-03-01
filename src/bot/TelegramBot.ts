@@ -72,7 +72,7 @@ export class TelegramBot extends EventEmitter {
       replyToMessageId
     }: {
       replyMarkup?: InlineKeyboardMarkup | ReplyKeyboardMarkup;
-      parseMode?: string;
+      parseMode?: "Markdown" | "HTML";
       disableWebPagePreview?: boolean;
       disableNotification?: boolean;
       replyToMessageId?: number;

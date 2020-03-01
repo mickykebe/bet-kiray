@@ -36,11 +36,16 @@ async function postListingToTelegram(listing: db.HouseListing, owner: db.User) {
   await telegramService.sendSuccessSaving(owner.telegram_id, listing, owner);
 }
 
-export async function approveListing(
-  req: Request,
-  res: Response,
-  next: NextFunction
+async function sendTelegramDeclineMessage(
+  listing: db.HouseListing,
+  owner: db.User
 ) {
+  const telegramBot = new TelegramBot(TELEGRAM_BOT_TOKEN);
+  const telegramService = new TelegramService(telegramBot);
+  await telegramService.sendDeclineMessage(owner.telegram_id, listing.title);
+}
+
+export async function approveListing(req: Request, res: Response) {
   const { id } = req.params;
   const affectedRows = await db.approveListing(parseInt(id));
   if (affectedRows === 1) {
@@ -55,6 +60,25 @@ export async function approveListing(
       );
     }
     await postListingToTelegram(listing, owner);
+    return;
+  }
+  res.sendStatus(404);
+}
+
+export async function declineListing(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  const { id } = req.params;
+  const affectedRows = await db.declineListing(parseInt(id));
+  if (affectedRows === 1) {
+    res.status(200).send(true);
+    const listing = (await db.getListingById(parseInt(id))) as db.HouseListing;
+    const owner = await db.getUserById(listing.owner);
+    if (owner) {
+      await sendTelegramDeclineMessage(listing, owner);
+    }
     return;
   }
   res.sendStatus(404);

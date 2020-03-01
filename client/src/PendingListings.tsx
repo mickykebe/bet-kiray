@@ -19,7 +19,8 @@ const useStyles = makeStyles(theme => {
     container: {
       display: "grid",
       gridTemplateColumns: "auto 2fr",
-      gridGap: theme.spacing(2)
+      gridGap: theme.spacing(2),
+      alignItems: "start"
     },
     listings: {
       background: theme.palette.primary.main,

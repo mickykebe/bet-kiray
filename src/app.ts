@@ -3,7 +3,11 @@ import bodyParser from "body-parser";
 import { PORT, JWT_SECRET } from "./utils/secrets";
 import expressJwt from "express-jwt";
 import { telegramLogin, getUser, hasRole } from "./controllers/user";
-import { pendingListings, approveListing } from "./controllers/listing";
+import {
+  pendingListings,
+  approveListing,
+  declineListing
+} from "./controllers/listing";
 
 const app = express();
 
@@ -36,6 +40,13 @@ app.patch(
   authenticate,
   catchErrors(hasRole("admin")),
   catchErrors(approveListing)
+);
+
+app.patch(
+  "/api/decline-listing/:id",
+  authenticate,
+  catchErrors(hasRole("admin")),
+  catchErrors(declineListing)
 );
 
 export { app };

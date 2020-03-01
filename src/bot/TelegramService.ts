@@ -146,4 +146,16 @@ export class TelegramService {
       }
     });
   };
+
+  sendDeclineMessage = (chatId: string | number, listingTitle: string) => {
+    return this.telegramBot.sendMessage(
+      chatId,
+      `በሚከተለው ርዕስ የተላከው ቤት አልተፈቀደም 😞፡፡
+
+\`\`\` ${listingTitle} \`\`\``,
+      {
+        parseMode: "Markdown"
+      }
+    );
+  };
 }

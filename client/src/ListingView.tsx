@@ -91,6 +91,15 @@ const approveListing = ({ id }: { id: number }) => {
   });
 };
 
+const declineListing = ({ id }: { id: number }) => {
+  return api(`/api/decline-listing/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
+};
+
 export default function ListingView({ listing }: Props) {
   const classes = useStyles();
   const [showError, setShowError] = useState(false);
@@ -102,9 +111,28 @@ export default function ListingView({ listing }: Props) {
       setShowError(true);
     }
   });
+  const [declineMutate, { status: declineStatus }] = useMutation(
+    declineListing,
+    {
+      onSuccess: () => {
+        queryCache.refetchQueries("pendingListings");
+      },
+      onError: () => {
+        setShowError(true);
+      }
+    }
+  );
   const onApproveListing = async () => {
     try {
       await mutate({ id: listing.id });
+    } catch (err) {
+      setShowError(true);
+      console.log(err);
+    }
+  };
+  const onDeclineListing = async () => {
+    try {
+      await declineMutate({ id: listing.id });
     } catch (err) {
       setShowError(true);
       console.log(err);
@@ -134,7 +162,9 @@ export default function ListingView({ listing }: Props) {
             disabled={status === "loading"}>
             <DoneOutlineIcon fontSize="small" />
           </IconButton>
-          <IconButton>
+          <IconButton
+            onClick={onDeclineListing}
+            disabled={declineStatus === "loading"}>
             <CloseIcon fontSize="small" />
           </IconButton>
         </Toolbar>
@@ -195,7 +225,7 @@ export default function ListingView({ listing }: Props) {
         autoHideDuration={6000}
         onClose={() => setShowError(false)}>
         <MuiAlert elevation={6} variant="filled" severity="error">
-          Problem occurred approving job
+          Problem occurred performing request
         </MuiAlert>
       </Snackbar>
     </div>

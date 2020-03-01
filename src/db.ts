@@ -225,6 +225,14 @@ export function approveListing(id: number) {
     });
 }
 
+export function declineListing(listingId: number) {
+  return knex("house_listing")
+    .where("id", listingId)
+    .update({
+      approval_status: "Declined"
+    });
+}
+
 export function createSocialPost(listingId: number, telegramMessageId: number) {
   return knex("listing_social_post").insert({
     listing_id: listingId,
