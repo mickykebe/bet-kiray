@@ -7,7 +7,14 @@ import {
 } from "../types/telegram";
 import { TelegramBotMachine, EVENT_CLOSE_JOB } from "./TelegramBotMachine";
 import { logger } from "../utils/logger";
-import { getUserByTelegramId, closeListing } from "../db";
+import {
+  getUserByTelegramId,
+  closeListing,
+  getSocialPost,
+  getListingById
+} from "../db";
+import { TelegramService } from "./TelegramService";
+import { TELEGRAM_CHANNEL_USERNAME } from "../utils/secrets";
 
 export class BotController {
   constructor(
@@ -59,12 +66,30 @@ export class BotController {
     const user = await getUserByTelegramId(telegramUserId);
     if (user) {
       const numClosed = await closeListing(listingId, { ownerId: user.id });
-      if (numClosed > 0) {
+      if (numClosed !== 1) {
+        this.bot.answerCallbackQuery(callbackQueryId, {
+          text: "የቤቱን ማስታወቅያ ስዘጋ ችግር አጋጠመኝ፡፡ ምናልባት ከዚህ በፊት ተዘግቶ ይሆናል፡፡",
+          showAlert: true
+        });
+        return;
+      }
+      try {
+        const socialPost = await getSocialPost(listingId);
+        if (socialPost?.telegram_message_id) {
+          const listing = await getListingById(socialPost.listing_id);
+          const telegramService = new TelegramService(this.bot);
+          await telegramService.editWithCloseMessage(
+            `@${TELEGRAM_CHANNEL_USERNAME}`,
+            socialPost.telegram_message_id,
+            listing
+          );
+        }
         this.bot.answerCallbackQuery(callbackQueryId, {
           text: "የቤቱ ማስታወቅያ አሁን ተዘግቷል፡፡",
           showAlert: true
         });
-      } else {
+      } catch (err) {
+        logger.error(err);
         this.bot.answerCallbackQuery(callbackQueryId, {
           text: "የቤቱን ማስታወቅያ ስዘጋ ችግር አጋጠመኝ፡፡ ምናልባት ከዚህ በፊት ተዘግቶ ይሆናል፡፡",
           showAlert: true

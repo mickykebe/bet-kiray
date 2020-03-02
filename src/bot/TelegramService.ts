@@ -26,20 +26,14 @@ export class TelegramService {
   constructor(private telegramBot: TelegramBot) {}
 
   private listingMessage = (
-    listing: {
-      title: string;
-      available_for: string;
-      house_type: string;
-      price?: string;
-      rooms?: number;
-      bathrooms?: number;
-      location?: string;
-      description?: string;
-      telegram_user_id?: number;
-      apply_phone_number?: string;
-      apply_via_telegram?: boolean;
-    },
-    owner?: User
+    listing: ListingData,
+    {
+      owner,
+      omitContact = false
+    }: {
+      owner?: User;
+      omitContact?: boolean;
+    } = {}
   ): string => {
     return `*📝 መግለጫ:* \`\`\` ${listing.title} \`\`\`
 
@@ -58,15 +52,15 @@ export class TelegramService {
         ? `\n\n*📜 ዝርዝር መግለጫ:* \`\`\`${listing.description}\`\`\``
         : ""
     }${
-      listing.apply_via_telegram && owner
+      !omitContact && listing.apply_via_telegram && owner
         ? `\n\n*💬 ስለ ቤቱ ለመነጋገር፡* [${owner.first_name ||
             (owner.telegram_user_name
               ? `@${owner.telegram_user_name}`
               : null) ||
-            "User"}](tg://user?id=${listing.telegram_user_id})`
+            "User"}](tg://user?id=${owner.telegram_id})`
         : ""
     }${
-      !!listing.apply_phone_number
+      !omitContact && !!listing.apply_phone_number
         ? `\n\n*📱 ስለ ቤቱ ለመነጋገር፡* \`\`\`${listing.apply_phone_number}\`\`\``
         : ""
     }`;
@@ -85,7 +79,7 @@ export class TelegramService {
       owner?: User;
     } = {}
   ): Promise<TelegramMessage> => {
-    const message = this.listingMessage(listing, owner);
+    const message = this.listingMessage(listing, { owner });
     if (listing.photos && listing.photos.length === 1) {
       return this.telegramBot.sendPhoto(chatId, listing.photos[0], {
         caption: message,
@@ -117,6 +111,33 @@ export class TelegramService {
       parseMode: "Markdown",
       replyMarkup
     });
+  };
+
+  editWithCloseMessage = async (
+    chatId: number | string,
+    messageId: number,
+    listing: HouseListing
+  ) => {
+    const message = this.listingMessage(listing, { omitContact: true });
+    const closeMessage = `-------- 🔒 *ቤቱ ${
+      listing.available_for === "Rent" ? "ተከራይቷል" : "ተሽጧል"
+    }* --------
+
+${message}`;
+
+    if (listing.photos?.length ?? 0 > 0) {
+      await this.telegramBot.editMessageCaption({
+        chatId,
+        messageId,
+        caption: closeMessage,
+        parseMode: "Markdown"
+      });
+    } else {
+      await this.telegramBot.editMessageText(chatId, closeMessage, {
+        messageId,
+        parseMode: "Markdown"
+      });
+    }
   };
 
   sendSuccessSaving = (

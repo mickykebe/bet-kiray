@@ -54,6 +54,11 @@ interface ListingInput {
   applyPhoneNumber?: string;
 }
 
+interface ListingSocialPost {
+  listing_id: number;
+  telegram_message_id?: number;
+}
+
 const houseListingColumns = [
   "id",
   "available_for",
@@ -238,4 +243,10 @@ export function createSocialPost(listingId: number, telegramMessageId: number) {
     listing_id: listingId,
     telegram_message_id: telegramMessageId
   });
+}
+
+export function getSocialPost(listingId: number) {
+  return knex<ListingSocialPost>("listing_social_post")
+    .first()
+    .where("listing_id", listingId);
 }

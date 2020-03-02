@@ -18,6 +18,9 @@ import {
 const TELEGRAM_API_BASE_URL = `https://api.telegram.org/bot`;
 const TELEGRAM_FILE_BASE_URL = `https://api.telegram.org/file/bot`;
 
+type ChatId = number | string;
+type ParseMode = "Markdown" | "HTML";
+
 export class TelegramBot extends EventEmitter {
   telegramBaseUrl: string;
   telegramFileBaseUrl: string;
@@ -62,7 +65,7 @@ export class TelegramBot extends EventEmitter {
   }
 
   sendMessage(
-    chatId: number | string,
+    chatId: ChatId,
     text: string,
     {
       replyMarkup,
@@ -72,7 +75,7 @@ export class TelegramBot extends EventEmitter {
       replyToMessageId
     }: {
       replyMarkup?: InlineKeyboardMarkup | ReplyKeyboardMarkup;
-      parseMode?: "Markdown" | "HTML";
+      parseMode?: ParseMode;
       disableWebPagePreview?: boolean;
       disableNotification?: boolean;
       replyToMessageId?: number;
@@ -92,7 +95,7 @@ export class TelegramBot extends EventEmitter {
   }
 
   sendPhoto(
-    chatId: number | string,
+    chatId: ChatId,
     photo: string,
     {
       caption,
@@ -102,7 +105,7 @@ export class TelegramBot extends EventEmitter {
       replyMarkup
     }: {
       caption?: string;
-      parseMode?: string;
+      parseMode?: ParseMode;
       disableNotification?: boolean;
       replyToMessageId?: number;
       replyMarkup?:
@@ -126,7 +129,7 @@ export class TelegramBot extends EventEmitter {
   }
 
   sendMediaGroup(
-    chatId: number | string,
+    chatId: ChatId,
     media: (InputMediaPhoto | InputMediaVideo)[],
     {
       disableNotification,
@@ -146,7 +149,7 @@ export class TelegramBot extends EventEmitter {
     }) as Promise<TelegramMessage[]>;
   }
 
-  sendChatAction(chatId: number | string, action: string): Promise<boolean> {
+  sendChatAction(chatId: ChatId, action: string): Promise<boolean> {
     return this.telegramMethod("sendChatAction", {
       data: {
         chat_id: chatId,
@@ -163,7 +166,7 @@ export class TelegramBot extends EventEmitter {
     }) as Promise<TelegramFile>;
   }
 
-  async answerCallbackQuery(
+  answerCallbackQuery(
     callbackQueryId: string,
     {
       text,
@@ -180,6 +183,63 @@ export class TelegramBot extends EventEmitter {
         cache_time: cacheTime
       }
     }) as Promise<boolean>;
+  }
+
+  editMessageText(
+    chatId: ChatId,
+    text: string,
+    {
+      messageId,
+      inlineMessageId,
+      parseMode,
+      disableWebPagePreview,
+      replyMarkup
+    }: {
+      messageId?: number;
+      inlineMessageId?: string;
+      parseMode?: ParseMode;
+      disableWebPagePreview?: boolean;
+      replyMarkup?: InlineKeyboardMarkup;
+    } = {}
+  ) {
+    return this.telegramMethod("editMessageText", {
+      data: {
+        chat_id: chatId,
+        text,
+        message_id: messageId,
+        inline_message_id: inlineMessageId,
+        parse_mode: parseMode,
+        disable_web_page_preview: disableWebPagePreview,
+        reply_markup: replyMarkup
+      }
+    }) as Promise<TelegramMessage>;
+  }
+
+  editMessageCaption({
+    chatId,
+    messageId,
+    inlineMessageId,
+    caption,
+    parseMode,
+    replyMarkup
+  }: {
+    chatId?: ChatId;
+    messageId?: number;
+    inlineMessageId?: string;
+    caption?: string;
+    parseMode?: ParseMode;
+    replyMarkup?: InlineKeyboardMarkup;
+  } = {}) {
+    return this.telegramMethod("editMessageCaption", {
+      data: {
+        chat_id: chatId,
+        message_id: messageId,
+        inline_message_id: inlineMessageId,
+        caption,
+        parse_mode: parseMode,
+        reply_markup: replyMarkup
+      }
+    }) as Promise<TelegramMessage>;
   }
 
   downloadFile(filePath: string): Promise<AxiosResponse> {
