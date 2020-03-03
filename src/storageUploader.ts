@@ -1,5 +1,4 @@
 import path from "path";
-import { logger } from "./utils/logger";
 import { Storage } from "@google-cloud/storage";
 import {
   GC_PROJECT_ID,
