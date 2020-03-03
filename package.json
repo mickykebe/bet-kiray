@@ -4,6 +4,8 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
+    "start": "tsc && npm run client && NODE_ENV=production node build/index.js",
+    "client": "cd client && npm run build",
     "build": "tsc && node build/index.js",
     "watch": "nodemon -e ts --exec \" yarn run build\""
   },
@@ -14,7 +16,9 @@
     "@types/jsonwebtoken": "^8.3.7",
     "@types/yup": "^0.26.31",
     "concurrently": "^5.1.0",
-    "nodemon": "^2.0.2"
+    "cross-env": "^7.0.0",
+    "nodemon": "^2.0.2",
+    "typescript": "^3.8.3"
   },
   "dependencies": {
     "@google-cloud/storage": "^4.3.1",

@@ -8,6 +8,7 @@ import {
   approveListing,
   declineListing
 } from "./controllers/listing";
+import path from "path";
 
 const app = express();
 
@@ -18,6 +19,7 @@ const authenticate = expressJwt({
 app.set("port", PORT);
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, "../client/build")));
 
 function catchErrors(
   middleware: (req: Request, res: Response, next: NextFunction) => Promise<void>
@@ -48,5 +50,8 @@ app.patch(
   catchErrors(hasRole("admin")),
   catchErrors(declineListing)
 );
+app.get("*", (req: Request, res: Response) => {
+  res.sendFile(path.join(__dirname, "../client/build", "index.html"));
+});
 
 export { app };
