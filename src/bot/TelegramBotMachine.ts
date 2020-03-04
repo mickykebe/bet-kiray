@@ -868,7 +868,7 @@ export class TelegramBotMachine {
   private promptTitle = async (context: Context) => {
     await this.telegramBot.sendMessage(
       context.telegramUserId,
-      `ቤቱን በአንድ አረፍተነገር ግለጽ
+      `ለቤት ማስታወቅያው አጭር ርዕስ ስጥ(በአጭር አረፍተነገር)
 
 _(ምሳሌ፦ "ጀሞ ሰፈር የሚከራይ ባለ አንድ መኝታ ቤት ኮንዶሚንየም)_`,
       {
@@ -979,7 +979,7 @@ _(ፎቶ ከሌለህ ጨርሻለሁን ተጫን፡፡ )_`,
     if (listing.applyViaTelegram) {
       owner = await getUserById(context.userId);
     }
-    return this.telegramService.sendListing(
+    await this.telegramService.sendListing(
       context.telegramUserId,
       {
         title: listing.title as string,
@@ -995,7 +995,15 @@ _(ፎቶ ከሌለህ ጨርሻለሁን ተጫን፡፡ )_`,
         photos: listing.photoFileIds || []
       },
       {
-        owner,
+        owner
+      }
+    );
+    return this.telegramBot.sendMessage(
+      context.telegramUserId,
+      `የቤቱ ማስታወቅያ ይህንን ይመስላል፡፡
+
+ሁሉም መረጃ ትክክል ከሆነ ጨርሻለሁን ተጫን፡፡ ካልሆነ ወደ ኋላ በመመለስ አስተካክል፡፡`,
+      {
         replyMarkup: {
           keyboard: [
             [{ text: MESSAGE_BACK }, { text: MESSAGE_DONE }],
