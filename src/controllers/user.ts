@@ -57,6 +57,6 @@ export function hasRole(role: string) {
         return;
       }
     }
+    throw new Error("User doesn't have the role to execute this action");
   };
-  throw new Error("User doesn't have the role to execute this action");
 }
