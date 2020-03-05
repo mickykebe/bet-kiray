@@ -1,5 +1,5 @@
 <p align="center">
-    <img alt="Bet Afalagi" src="https://github.com/mickykebe/bet-kiray/blob/master/betafalagi.png">
+    <img alt="Bet Afalagi" src="https://github.com/mickykebe/bet-kiray/blob/master/betafalagi.png" width="200">
 </p>
 
 # Bet Afalagi
