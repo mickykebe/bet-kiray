@@ -48,7 +48,7 @@ export class BotController {
       } catch (err) {
         logger.warn("Problem parsing event from callback data");
       }
-      if (callbackData.event === EVENT_CLOSE_JOB) {
+      if (callbackData?.event === EVENT_CLOSE_JOB) {
         await this.closeListing(
           telegramUser.id,
           callbackQuery.id,
